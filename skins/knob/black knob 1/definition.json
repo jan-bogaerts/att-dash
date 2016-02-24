@@ -1,0 +1,8 @@
+{
+  "size":[50, 50],
+  "knob":"knob_black.png",
+  "marker": "bline3.png",
+  "show_label": true,
+  "show_marker": true,
+  "Example":"knob_black.png"
+}

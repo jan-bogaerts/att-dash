@@ -1,0 +1,406 @@
+#:kivy 1.9.1
+#:import icon iconfonts.icon
+#:import Application main.Application
+#:import ImageButton layoutwidgets.ImageButton
+
+<FloatLayout>:
+    canvas.after:
+        Line:
+            rectangle: self.x+1,self.y+1,self.width-1,self.height-1
+            dash_offset: 5
+            dash_length: 3
+
+###################################################################################
+#dialogs
+
+<GroupDialog>:
+    iconInput: txtIcon
+    titleInput: txtTitle
+    size_hint: None, None
+    size: 340, 300
+    BoxLayout:
+        orientation: 'vertical'
+		padding: '12dp'
+		#pos_hint: {'center': (0.5, 0.5)}
+		#size_hint_x: 0.66
+		#size_hint_y: None
+        TextInput:
+            id: txtTitle
+            focus: True
+            write_tab: False
+            text: root.group_title
+            hint_text:'group title'
+            size_hint: 1, None
+            height: '32dp'
+        Button:
+            id: txtIcon
+            background_normal: root.icon
+            border:0,0,0,0
+            on_release: root.selectImage()
+        Button:
+            text: 'Done'
+            size_hint: 1, None
+            height: '48dp'
+            on_release: root.done()
+
+<SelectImageDialog>:
+    size_hint: 0.9, 0.9
+    title: 'Select image'
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+            multiselect: False
+            path: root.path
+            filters: ['*.png', '*.jpg', '*.jpeg', '*.csv', '*.gif']
+        BoxLayout:
+            size_hint_y: None
+            height: '48dp'
+            Button:
+                text: "Cancel"
+                on_release: root.cancel()
+            Button:
+                text: "Load"
+                on_release: root.load(filechooser.path, filechooser.selection)
+
+
+
+<SectionDialog>:
+    titleInput: txtTitle
+    size_hint: None, None
+    size: 340, 300
+    BoxLayout:
+        orientation: 'vertical'
+		padding: '12dp'
+		#pos_hint: {'center': (0.5, 0.5)}
+		#size_hint_x: 0.66
+		#size_hint_y: None
+        TextInput:
+            id: txtTitle
+            focus: True
+            write_tab: False
+            hint_text:'name of section'
+        Button:
+            text: 'Done'
+            on_release: root.done()
+
+<AssetDialog>:
+    #assetInput: txtAsset
+    #assetInput: trvAsset
+    labelInput: txtTitle
+    size_hint: 0.7, 0.9
+    #ScrollView:
+    #    size_hint: 1, 1
+    GridLayout:
+        cols: 1
+        spacing: '10dp'
+        #height: self.minimum_height + 30
+        size_hint: 1, 1
+        pos: root.pos
+        ScrollView:
+            size_hint: 1, None
+            height:'220dp'
+            pos: (0,0)
+            TreeView:
+                #id: trvAsset
+                hide_root:True
+                indent_level:4
+                load_func: root.populateTreeNode
+                minimum_height: self.height
+                size_hint_y: None
+                on_selected_node: root.on_assetChanged(args[1])
+        TextInput:
+            id: txtAsset
+            size_hint_y: None
+            height:'32dp'
+            focus: True
+            write_tab: False
+            hint_text:'id of the asset'
+        TextInput:
+            id: txtTitle
+            size_hint_y: None
+            height:'32dp'
+            focus: True
+            write_tab: False
+            hint_text:'label (default value = ' + root.assetLabel + ')'
+        Widget:
+            size_hint_y: None
+            height:'100dp'
+            ImageButton:
+                size: self.parent.size
+                pos: self.parent.pos
+                source: root.selectedSkinExample
+                on_release: root.showStylesDropDown(self)
+        Slider:
+            size_hint_y: None
+            height:'32dp'
+            id: size_slider
+            min: 0.1
+            max: 3.0
+            step: 0.1
+            padding: '8dp'
+            value: root.currentSize
+            on_value: root.setSize(args[1])
+        Label:
+            size_hint_y: None
+            height:'18dp'
+            text: str(size_slider.value)
+            halign: 'center'
+        Button:
+            text: 'Done'
+            height:'32dp'
+            on_release: root.done()
+
+<NewLayoutPopup>:
+    nameInput: txtTitle
+    size_hint: None, None
+    size: 340, 300
+    BoxLayout:
+        orientation: 'vertical'
+		padding: '12dp'
+		#pos_hint: {'center': (0.5, 0.5)}
+		#size_hint_x: 0.66
+		#size_hint_y: None
+        TextInput:
+            id: txtTitle
+            focus: True
+            write_tab: False
+            hint_text:'name of layout'
+        Button:
+            text: 'Done'
+            on_release: root.done()
+
+
+<CredentialsDialog>:
+    userNameInput: txtUserName
+    pwdInput: txtPwd
+    serverInput: txtServer
+    brokerInput: txtBroker
+    size_hint: .3, .4
+    auto_dismiss: False
+    title: 'Credentials'
+    BoxLayout:
+        orientation: 'vertical'
+		padding: '12dp'
+        TextInput:
+            id: txtUserName
+            focus: True
+            write_tab: False
+            hint_text: 'User name'
+        TextInput:
+            id: txtPwd
+            write_tab: False
+            hint_text: 'Password'
+        TextInput:
+            id: txtServer
+            write_tab: False
+            hint_text: 'server address'
+        TextInput:
+            id: txtBroker
+            write_tab: False
+            hint_text: 'broker address'
+        Button:
+            text: 'Cancel'
+            on_press: root.dismiss()
+        Button:
+            text: 'Ok'
+            on_press: root.dismissOk()
+
+
+<TextInputDialog>:
+    # size_hint: 1, 1
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.size
+        pos: root.pos
+        Label:
+            text: "name:"
+        TextInput:
+            text: "test"
+            write_tab: False
+
+
+
+<LoadDialog>:
+    size_hint: 0.9, 0.9
+    title: 'Load layout'
+    BoxLayout:
+        size: root.size
+        pos: root.pos
+        orientation: "vertical"
+        FileChooserListView:
+            id: filechooser
+            multiselect: False
+            filters: ['*.board']
+            path: Application.user_data_dir
+
+        BoxLayout:
+            size_hint_y: None
+            height: '48dp'
+            Button:
+                text: "Cancel"
+                on_release: root.cancel()
+            Button:
+                text: "Load"
+                on_release: root.load(filechooser.path, filechooser.selection)
+
+
+###################################################################################
+
+<EditButton>:
+    # common style for all buttons used to indicate edit actions
+    markup: True
+    text: '%s'%(icon('fa-square-o'))
+    size_hint: None, None
+    height: 24
+    width: 24
+    background_normal: ''
+    background_down: ''
+    background_color: 0,0,0,0
+    # on_release: root.editLayout()
+
+<GroupMenuItem>:
+    size_hint: (None, 1)            # this makes certain that the menu items aren't spread out evenly accros the menu, but only use the required space
+    BoxLayout:
+        orientation: 'vertical'
+        size: root.size
+        pos: root.pos
+
+        padding: '8dp'
+        spacing: '8dp'
+        AsyncImage:
+            source: root.data.icon
+        Label:
+            halign: 'center'
+            valign: 'bottom'
+            text: root.data.title
+            size_hint: 1, None
+            size: self.texture_size
+            text_size: root.width, None     # so it's horizontally centered, vertically to the bottom
+
+<AssetWidget>:
+    control_container: asset_layout
+    size_hint: (None, None)
+    size: asset_layout.minimum_size
+    GridLayout:
+        id: asset_layout
+        pos: root.pos
+        size: self.minimum_size
+        cols: 1
+        rows: 2
+        padding: 15
+        Label:
+            halign: 'center'
+            valign: 'bottom'
+            text: root.data.title
+            size_hint: (1, None)
+            size: self.texture_size
+            text_size: root.width, None     # so it's horizontally centered, vertically to the bottom
+
+<SectionWidget>:
+    assets: assets_layout
+    size_hint: (0.33, None)
+    height: assets_layout.minimum_size[1] + section_lbl.texture_size[1] + 24
+    canvas.before:
+        Color:
+            rgba: 0.2, 0.0980392, 0, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+    BoxLayout:
+        id: section_box
+        orientation: 'vertical'
+        pos: root.pos
+        size: root.size
+        padding: 8
+        spacing: 8
+        Label:
+            id: section_lbl
+            halign: 'center'
+            valign: 'bottom'
+            text: root.data.title
+            size_hint: 1, None
+            height: 20
+            size: self.texture_size
+            text_size: root.width, None     # so it's horizontally centered, vertically to the bottom
+        StackLayout:
+            id: assets_layout
+            orientation: 'lr-tb'
+            padding: 0
+            spacing: 8
+            size: self.minimum_size
+
+
+<InvalidControlWidget>:
+    Label:
+        halign: 'center'
+        text: 'invalid control'
+
+
+<EditActionBar>:
+    id: mainActionBar
+    size_hint: 1, None
+    ActionView:
+        use_separator: True
+        ActionPrevious:
+            title: 'ATT board'
+            with_previous: False
+        ActionButton:
+            markup: True
+            text: '%s'%(icon('fa-trash-o'))
+            on_release: self.parent.parent.parent.parent.deleteSelected()
+        ActionButton:
+            markup: True
+            text: '%s'%(icon('fa-pencil-square-o'))
+            on_release: self.parent.parent.parent.parent.editSelected()
+        ActionButton:
+            markup: True
+            text: '%s'%(icon('fa-check'))
+            on_release: self.parent.parent.parent.parent.endEdit()
+
+
+<MainWindow>:
+    menu: menu_layout
+    workspace: workspace_layout
+    rootLayout: mainLayout
+    BoxLayout:
+        id: mainLayout
+        size: root.size
+        pos: root.pos
+        orientation: 'vertical'
+        Widget:
+            size_hint: 1, None
+            height: '100dp'                                  # fixed height, so the menu is always the same size
+            y: root.height - self.height
+            BoxLayout:
+                pos: self.parent.pos
+                size: self.parent.size
+                BoxLayout:
+                    id: menu_layout
+                    orientation: 'horizontal'
+                    padding: '10dp'
+                    spacing: '5dp'
+                AnchorLayout:
+                    anchor_x:'right'
+                    size_hint:(0.1, 1)
+                    padding: 0, 20
+                    Button:
+                        background_normal: "images/openMenu.png"
+                        border:0,0,0,0
+                        size: ('60dp','60dp')
+                        size_hint: (None, None)
+                        on_release: root.showMainDropDown(self)
+        ScrollView:
+            size_hint: 1, 1
+            pos_hint: {'x': 0, 'top': 30}
+            StackLayout:
+                id: workspace_layout
+                orientation: 'lr-tb'
+                size_hint: 1, None
+                pos_hint: {'x': 0, 'y': 0}
+                padding: 10
+                spacing: 20
+                height: self.minimum_height
+

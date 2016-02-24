@@ -1,2 +1,16 @@
 # att-dash
-aa mobile application for creating and managing IOT dashboard, connected to the AllThingsTalk platform
+a mobile application for creating and managing IOT dashboards, connected to the AllThingsTalk platform.
+
+##Runs on:
+- android
+- iphone
+- mac
+- linux
+- windows
+- ...
+
+##Dependencies:
+-kivy
+-paho-mqtt
+
+This is an early, functional, beta release.

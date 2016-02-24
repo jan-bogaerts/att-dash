@@ -1,0 +1,6 @@
+{
+  "normal":"greenled_off.png",
+  "down":"greenled_on2.png",
+  "size":["24dp", "24dp"],
+  "Example":"greenled_off.png"
+}
