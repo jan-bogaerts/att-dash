@@ -3,7 +3,7 @@
 #:import Application main.Application
 #:import ImageButton layoutwidgets.ImageButton
 
-#<FloatLayout>:
+#<BoxLayout>:
 #    canvas.after:
 #        Line:
 #            rectangle: self.x+1,self.y+1,self.width-1,self.height-1
@@ -160,7 +160,7 @@
     BoxLayout:
         orientation: 'vertical'
 		padding: '12dp'
-		#pos_hint: {'center': (0.5, 0.5)}
+		#pos_hint: {'center_x': .5, 'center_y': .5}
 		#size_hint_x: 0.66
 		#size_hint_y: None
         TextInput:
@@ -377,21 +377,26 @@
             BoxLayout:
                 pos: self.parent.pos
                 size: self.parent.size
-                BoxLayout:
-                    id: menu_layout
-                    orientation: 'horizontal'
-                    padding: '10dp'
-                    spacing: '5dp'
-                AnchorLayout:
-                    anchor_x:'right'
-                    size_hint:(0.1, 1)
-                    padding: 0, 20
-                    Button:
-                        background_normal: "images/openMenu.png"
-                        border:0,0,0,0
-                        size: ('60dp','60dp')
-                        size_hint: (None, None)
-                        on_release: root.showMainDropDown(self)
+
+
+                ScrollView:
+                    size_hint: None, None
+                    width: self.parent.width - dp(60)
+                    GridLayout:
+                        id: menu_layout
+                        rows: 1
+                        size_hint: None, 1
+                        pos_hint: {'x': 0, 'y': 0}
+                        padding: '10dp'
+                        spacing: '5dp'
+                        width: self.minimum_width
+                Button:
+                    background_normal: "images/openMenu.png"
+                    border:0,0,0,0
+                    size: ('60dp','60dp')
+                    size_hint: (None, None)
+                    pos_hint: {'center_x': .5, 'center_y': .5}
+                    on_release: root.showMainDropDown(self)
         ScrollView:
             size_hint: 1, 1
             pos_hint: {'x': 0, 'top': 30}
@@ -400,7 +405,7 @@
                 orientation: 'lr-tb'
                 size_hint: 1, None
                 pos_hint: {'x': 0, 'y': 0}
-                padding: 10
-                spacing: 20
+                padding: '10dp'
+                spacing: '20dp'
                 height: self.minimum_height
 

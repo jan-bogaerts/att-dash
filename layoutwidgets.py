@@ -93,5 +93,5 @@ class GroupMenuItem(ButtonBehavior, Widget):
 
     def on_press(self):
         if self.data.isSelected == False:                   # only react if we are not selected, if we are, we don't need to switch focus.
-            self.parent.parent.parent.parent.parent.setSelectedGroup(self)
+            self.parent.parent.parent.parent.parent.parent.setSelectedGroup(self)
 

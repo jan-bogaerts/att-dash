@@ -379,6 +379,7 @@ class MainWindow(Widget):
                         self.setSelectedGroup(None)
                 parent.data.delete()                    #delete the data.
                 parent.parent.remove_widget(parent)
+        self.selectedItems.clear()
 
 
 
