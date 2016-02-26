@@ -7,6 +7,8 @@ __status__ = "Prototype"  # "Development", or "Production"
 
 import os
 import json
+import re
+from kivy.properties import dpi2px
 
 #toggleButton_normal = "images\up_button.png"
 #toggleButton_down = "images\down_button.png"
@@ -29,14 +31,17 @@ def loadSkins(path):
             skins = {}
             skinTypes[dir] = skins
             for root2, dirs2, files2 in os.walk(os.path.join(root, dir)):
-                for skin in dirs2:
-                    with open(os.path.join(root2, skin, 'definition.json')) as data_file:
-                        skins[os.path.abspath(skin)] = json.load(data_file)
+                for skinName in dirs2:
+                    with open(os.path.join(root2, skinName, 'definition.json')) as data_file:
+                        skin = json.load(data_file)
+                        skin['path'] = os.path.join(root2, skinName)
+                        skin['name'] = skinName
+                        skins[skinName] = skin
 
 
 def getAvailableSkins(type):
     skins = skinTypes[type]
-    return [value for name, value in skins]
+    return [value for name, value in skins.iteritems()]
 
 def getSkin(type, asset):
     """get the skin for the specified control type and state.
@@ -48,12 +53,24 @@ def getSkin(type, asset):
         else:
             return skins["default"]
 
+def metricToPixels(value):
+    result = None
+    if isinstance(value, basestring):
+        match = re.match(r"([0-9]+)([a-z]+)", value, re.I)
+        if match:
+            res = match.groups()
+            return dpi2px(res[0], res[1])
+    elif type(value) is int:
+        return value
+    return 100
 
 def getControlSize(skin, asset):
     """get the size of control. The asset can overwrite it."""
     if skin:
         if asset and asset.skin and "size" in asset.skin:
-            return (skin["size"][0] * asset.skin["size"], skin["size"][1] * asset.skin["size"])
+            width = metricToPixels(skin['size'][0])
+            height = metricToPixels(skin['size'][1])
+            return (width * float(asset.skin["size"]), height * float(asset.skin["size"]))
         return (skin["size"][0], skin["size"][1])
 
     return (100, 100)

@@ -1,0 +1,25 @@
+{
+  "version":1.0,
+  "credentials": {
+    "username":"KardCard",
+    "password":"Funkmaster1",
+    "broker":"broker.smartliving.io",
+    "server":"api.smartliving.io"
+  },
+  "layout": [
+    {
+      "group": "lights",
+      "icon": "images/lights.png",
+      "isSelected": true,
+      "sections": [
+        {
+          "section": "beneden",
+          "isExpanded": true,
+          "assets": [
+            "jfxvrU9wq41ofxkBbGYqMBC37"
+          ]
+        }
+      ]
+    }
+  ]
+}

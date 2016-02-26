@@ -1,6 +1,6 @@
 {
   "normal":"off_button.png",
   "down":"on_button.png",
-  "size": ["41dp", "60dp"],
-  "Example":"off_button.png"
+  "size": ["60dp", "60dp"],
+  "example":"off_button.png"
 }

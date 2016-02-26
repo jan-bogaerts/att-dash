@@ -20,16 +20,7 @@ from dialogs import *
 import layout
 import attiotuserclient as IOT
 from layoutwidgets import *
-
-
-def showError(e):
-    if hasattr(e, 'strerror'):
-        error = e.strerror
-    else:
-        error = e.message
-    lbl = Label(text=error, size=(300, 200),text_size = (300, 200), halign = 'center', valign = 'middle')
-    popup = Popup(title='error', content=lbl,size_hint=(None, None), size=(300, 200), auto_dismiss=True)
-    popup.open()
+from errors import *
 
 class MainWindow(Widget):
     menu = ObjectProperty(None)
@@ -166,19 +157,35 @@ class MainWindow(Widget):
         dlg.open()
 
     def onNewAssetDone(self, parentW, asset):
-        assetW = AssetWidget(asset)
-        parentW.assets.add_widget(assetW)
+        parentW.data.assets.append(asset)
+        assetW = self.addAssetToSection(asset, parentW)
         if self.isEditing:
             self.addEditTo(assetW, 20)
 
-    def editAsset(self, asset):
+    def editAsset(self, asset, widget):
         """show a dialog so the user can edit the group"""
-        dlg = AssetWidget(asset, title='edit asset')
+        dlg = AssetDialog(asset, title='edit asset')
+        dlg.parentW = widget
+        dlg.callback = self.onEditAssetDone
         dlg.open()
 
+    def onEditAssetDone(self, parentW, asset):
+        if asset.control:
+            uiEl = asset.control.getUI()
+        else:
+            uiEl = InvalidControlWidget()
+        parentW.control_container.remove_widget(parentW.control_container.children[0]) # remove the old widget, addd the new one
+        parentW.control_container.add_widget(uiEl)
 
-
-
+    def addAssetToSection(self, asset, sectionW):
+        assetW = AssetWidget(asset)
+        sectionW.assets.add_widget(assetW)
+        if asset.control:
+            uiEl = asset.control.getUI()
+        else:
+            uiEl = InvalidControlWidget()
+        assetW.control_container.add_widget(uiEl)
+        return assetW
 
     def setSelectedGroup(self, group):
         """switch selected group and render the content"""
@@ -202,13 +209,7 @@ class MainWindow(Widget):
                 for asset in section.assets:
                     if asset.isLoaded == False:
                         asset.load()
-                    assetW = AssetWidget(asset)
-                    sectionW.assets.add_widget(assetW)
-                    if asset.control:
-                        uiEl = asset.control.getUI()
-                    else:
-                        uiEl = InvalidControlWidget()
-                    assetW.control_container.add_widget(uiEl)
+                    self.addAssetToSection(asset, sectionW)
             if self.isEditing:
                 self.editWorkSpace()
 
@@ -363,7 +364,7 @@ class MainWindow(Widget):
             elif type(parent) == SectionWidget:
                 self.editSection(parent.data)
             elif type(parent) == AssetWidget:
-                self.editAsset(parent.data)
+                self.editAsset(parent.data, parent)
 
 
     def deleteSelected(self):

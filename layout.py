@@ -14,6 +14,7 @@ import attiotuserclient as IOT
 import styleManager as sm
 from knob import Knob
 from gauge import Gauge
+import os
 
 class BaseIO(EventDispatcher):
     def __init__(self, asset, type, **kwargs):
@@ -51,8 +52,8 @@ class SwitchInput(BaseIO):
         if self.value:
             result.state = 'down'
         skin = sm.getSkin('switch', self.asset)
-        result.background_normal = skin["normal"]
-        result.background_down = skin["down"]
+        result.background_normal = os.path.join(skin['path'], skin["normal"])
+        result.background_down = os.path.join(skin['path'], skin["down"])
         result.size = sm.getControlSize(skin, self.asset)
         result.border = 0,0,0,0
         self.uiEl = result
@@ -133,8 +134,8 @@ class knobInput(BaseIO):
             result.value = self.value
         skin = sm.getSkin('slider', self.asset)
         result.size = sm.getControlSize(skin, self.asset)
-        result.knobimg_source = skin["knob"]
-        result.marker_img = skin['marker']
+        result.knobimg_source = os.path.join(skin['path'], skin["knob"])
+        result.marker_img = os.path.join(skin['path'], skin['marker'])
         result.min = sm.getMinimum('knob', self.value, self._typeInfo)
         result.max = sm.getMaximum('knob', self.value, self._typeInfo)
         result.step = sm.getStep('knob', self._typeInfo)
@@ -175,8 +176,8 @@ class LedOutput(BaseIO):
         if self.value:
             result.state = 'down'
         skin = sm.getSkin('led', self.asset)
-        result.background_normal = skin['normal']
-        result.background_down = skin['down']
+        result.background_normal = os.path.join(skin['path'], skin['normal'])
+        result.background_down = os.path.join(skin['path'], skin['down'])
         result.size = sm.getControlSize(skin, self.asset)
         self.uiEl = result
         self.prepareUiElement()
@@ -207,8 +208,8 @@ class GaugeOutput(BaseIO):
         result = Gauge()
         skin = sm.getSkin('gauge', self.asset)
         result.size = sm.getControlSize(skin, self.asset)
-        result.file_gauge = skin['gauge']
-        result.file_needle = skin['needle']
+        result.file_gauge = os.path.join(skin['path'], skin['gauge'])
+        result.file_needle = os.path.join(skin['path'], skin['needle'])
         #self.min = sm.getMinimum('gauge', self.value, self._typeInfo)
         #self.max = sm.getMaximum('gauge', self.value, self._typeInfo)
         self.min = 0                                        #temp fix, gauge needs to be updated so it can handle values better
@@ -230,7 +231,8 @@ class Asset:
         self.skin = None
 
     def load(self, subscribe = True):
-        """load all the data for the asset. At this point, we also register with the broker"""
+        """load all the data for the asset. At this point, we also register with the broker
+        returns the asset object that was retrieved from the platform"""
         data = IOT.getAsset(self.id)
         if data:
             if self.skin and 'title' in self.skin:          # if user overwote the title, use that value, otherwise use the default value from the cloud
@@ -241,6 +243,7 @@ class Asset:
             self.isLoaded = True
             if subscribe:
                 IOT.subscribe(self.id, self._valueChanged)
+        return data
 
     def getControl(self, assetType, requested, datatype, value):
         """build the name of the data object that should be used in the display"""

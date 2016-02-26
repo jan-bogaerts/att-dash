@@ -210,6 +210,11 @@ def getDevices(ground):
     if result:
         return result['items']
 
+def getDevice(deviceId):
+    """get all the devices related to a ground"""
+    url = "/device/" + deviceId
+    return doHTTPRequest(url, "")
+
 def getAssets(device):
     """"get all the assets for a device"""
     url = "/device/" + device

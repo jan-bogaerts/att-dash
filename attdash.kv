@@ -3,12 +3,12 @@
 #:import Application main.Application
 #:import ImageButton layoutwidgets.ImageButton
 
-<FloatLayout>:
-    canvas.after:
-        Line:
-            rectangle: self.x+1,self.y+1,self.width-1,self.height-1
-            dash_offset: 5
-            dash_length: 3
+#<FloatLayout>:
+#    canvas.after:
+#        Line:
+#            rectangle: self.x+1,self.y+1,self.width-1,self.height-1
+#            dash_offset: 5
+#            dash_length: 3
 
 ###################################################################################
 #dialogs
@@ -86,53 +86,52 @@
             text: 'Done'
             on_release: root.done()
 
+
 <AssetDialog>:
-    #assetInput: txtAsset
-    #assetInput: trvAsset
     labelInput: txtTitle
-    size_hint: 0.7, 0.9
+    selectedSkinExample: btnSelectedSkin
+    size_hint: 0.6, None
+    height: '440dp'
     #ScrollView:
     #    size_hint: 1, 1
     GridLayout:
+        id: mainLayout
         cols: 1
         spacing: '10dp'
-        #height: self.minimum_height + 30
         size_hint: 1, 1
-        pos: root.pos
-        ScrollView:
+        Button:
             size_hint: 1, None
-            height:'220dp'
-            pos: (0,0)
-            TreeView:
-                #id: trvAsset
-                hide_root:True
-                indent_level:4
-                load_func: root.populateTreeNode
-                minimum_height: self.height
-                size_hint_y: None
-                on_selected_node: root.on_assetChanged(args[1])
-        TextInput:
-            id: txtAsset
-            size_hint_y: None
             height:'32dp'
-            focus: True
-            write_tab: False
-            hint_text:'id of the asset'
+            text: root.assetName
+            on_release: root.showAssetSelector()
         TextInput:
             id: txtTitle
             size_hint_y: None
             height:'32dp'
-            focus: True
             write_tab: False
             hint_text:'label (default value = ' + root.assetLabel + ')'
         Widget:
             size_hint_y: None
-            height:'100dp'
-            ImageButton:
+            height:'180dp'
+
+            RelativeLayout:
                 size: self.parent.size
                 pos: self.parent.pos
-                source: root.selectedSkinExample
-                on_release: root.showStylesDropDown(self)
+                Label:
+                    text: 'Click image to select skin'
+                    #pos: self.parent.pos
+                    #size_hint: None, None
+                    #size: self.texture_size
+                    text_size: self.parent.size
+                    halign: 'center'
+                    valign: 'bottom'
+                ImageButton:
+                    id: btnSelectedSkin
+                    size_hint: None, None
+                    allow_stretch: True
+                    pos_hint: {'center_x': .5, 'center_y': .5}
+                    source: 'none'
+                    on_release: root.showStylesDropDown(self)
         Slider:
             size_hint_y: None
             height:'32dp'
@@ -151,6 +150,7 @@
         Button:
             text: 'Done'
             height:'32dp'
+            size_hint_y: None
             on_release: root.done()
 
 <NewLayoutPopup>:
