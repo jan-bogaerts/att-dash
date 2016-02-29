@@ -163,8 +163,11 @@ def login(username, pwd):
 
 def _processError(str):
     obj = json.loads(str)
-    if obj and 'error_description' in obj:
-        raise Exception(obj['error_description'])
+    if obj:
+        if 'error_description' in obj:
+            raise Exception(obj['error_description'])
+        elif 'message' in obj:
+            raise Exception(obj['message'])
     raise Exception(str)
 
 def refreshToken():

@@ -24,7 +24,7 @@ from errors import *
 class GroupDialog(Popup):
     "edit groups"
     group_title = StringProperty('')
-    icon = StringProperty('')
+    icon = StringProperty('None')
     iconInput = ObjectProperty()
     titleInput = ObjectProperty()
 
@@ -34,7 +34,7 @@ class GroupDialog(Popup):
         super(GroupDialog, self).__init__(**kwargs)
 
     def selectImage(self):
-        runpath = os.path.dirname(os.path.realpath(sys.argv[0]))
+        runpath = os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), 'images')
         dlg = SelectImageDialog(self.selectImageDone, runpath)
         dlg.open()
 
@@ -81,10 +81,12 @@ class AssetDialog(Popup):
     assetLabel = StringProperty('')
     selectedSkinExample = ObjectProperty('')
     currentSize = NumericProperty(1)
+    mainLayout = ObjectProperty()               # provides a reference to the layout that contains the editing objects, used to add/remove the skin specific editors
 
 
     def __init__(self, data, **kwargs):
         self.callback = None
+        self.skinPropertyControls = None            # keep a reference to the controls that were added for editing the skin specific properties
         self.data = data
         self.tempData = copy.copy(data)             # make a shallow copy of the data object which we will be using to edit. It can load stuff
         if data.control:
@@ -140,16 +142,33 @@ class AssetDialog(Popup):
                 if self.tempData.id == asset['id']:
                     treeview.select_node(result)
 
-    def loadUIFromAsset(self):
+    def loadUIFromAsset(self, setDefaultSkin = False):
+        """load all the ui elements for the asset currently loaded in tempdata
+        if setDefaultSkin is true, then the 'default' skin will be loaded (or the first in the list)"""
         assetData = self.tempData.load(False)
         if assetData:                                                   # we display the exact name of the asset + device, not the title that we supplied.
             device = iot.getDevice(assetData['deviceId'])
             self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
         self.assetLabel = self.tempData.title
         if hasattr(self, 'selectedSkin') and self.selectedSkin:
-            imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
-            self.selectedSkinExample.source = imgPath
-            self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
+            if 'example' in self.selectedSkin:
+                imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
+                self.selectedSkinExample.source = imgPath
+                self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
+        elif setDefaultSkin:
+            skins = sm.getAvailableSkins(self.tempData.control.controlType)
+            if 'default' in skins:
+                self.setSkin(skins['default'])
+            elif len(skins) > 0:
+                self.setSkin(skins[0])
+
+        if hasattr(self, 'selectedSkin') and self.selectedSkin:         #could have changed if setDefaultSkin was true
+            if self.tempData.control:
+                if self.skinPropertyControls:
+                    map(self.mainLayout.remove_widget, self.skinPropertyControls)
+                self.skinPropertyControls = self.tempData.control.getPropertyEditors(self.selectedSkin)
+                map(self.mainLayout.add_widget, self.skinPropertyControls)
+
 
     def on_assetChanged(self, instance, id):
         try:
@@ -158,7 +177,7 @@ class AssetDialog(Popup):
             if id:
                 self.tempData.id = id.asset_id
                 self.tempData.isLoaded = False
-                self.loadUIFromAsset()
+                self.loadUIFromAsset(True)
         except Exception as e:
             showError(e)
 
@@ -172,23 +191,31 @@ class AssetDialog(Popup):
                     imgpPath = os.path.join(skin['path'], skin['example'])
                     btn = ImageButton(source=imgpPath,  size_hint_y=None, height=44)
                 else:
-                    btn = Button(text="no example available",  size_hint_y=None, height=44)
+                    btn = Button(text= skin['name'],  size_hint_y=None, height=44)
                 btn.skin = skin
                 #btn.bind(on_release=lambda btn: self.setSkin(btn.skin))
-                btn.bind(on_press=self.setSkin)
+                btn.bind(on_press=self.stylesDropDownClosed)
                 dropdown.add_widget(btn)
             dropdown.open(relativeTo)
 
-    def setSkin(self, btn):
+
+    def stylesDropDownClosed(self, btn):
+        """set the skin, close the dropdown"""
+        self.setSkin(btn.skin)
+        btn.parent.parent.select(None)  #this closes the popup
+
+    def setSkin(self, skin):
         """set the skin"""
         if self.tempData.skin:
-            self.tempData.skin["name"] = btn.skin["name"]
+            self.tempData.skin["name"] = skin["name"]
         else:
-            self.tempData.skin = {'name': btn.skin["name"]}
-        self.selectedSkinExample.source = btn.source
-        self.selectedSkinExample.size = sm.getControlSize(btn.skin, self.tempData)
-        self.selectedSkin = btn.skin
-        btn.parent.parent.select(btn.source)  #this closes the popup
+            self.tempData.skin = {'name': skin["name"]}
+        if 'example' in skin:
+            self.selectedSkinExample.source = os.path.join(skin['path'], skin['example'])
+        else:
+            self.selectedSkinExample.source = 'None'
+        self.selectedSkinExample.size = sm.getControlSize(skin, self.tempData)
+        self.selectedSkin = skin
 
     def setSize(self, size):
         """set the size of the control"""
@@ -199,14 +226,15 @@ class AssetDialog(Popup):
         self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
 
     def done(self):
-        self.data.id = self.tempData.id
-        self.data.skin = self.tempData.skin
-        self.data.title = self.tempData.title
-        self.data.isLoaded = False
-        self.data.load()                # reload the asset data so the control can be rerendered
+        if self.tempData.id:                        # only do something if there is an id, could be that user closed window after selecting 'add new'
+            self.data.id = self.tempData.id
+            self.data.skin = self.tempData.skin
+            self.data.title = self.tempData.title
+            self.data.isLoaded = False
+            self.data.load()                # reload the asset data so the control can be rerendered
 
-        if self.callback:
-            self.callback(self.parentW, self.data)
+            if self.callback:
+                self.callback(self.parentW, self.data)
 
         self.dismiss()
 
@@ -219,11 +247,16 @@ class NewLayoutPopup(Popup):
         self.main = main
         self.parentW = None  # for new items
         super(NewLayoutPopup, self).__init__(**kwargs)
-        self.nameInput.text = "new layout"
 
     def done(self):
-        self.dismiss()
-        self.main.newLayoutDone(self.nameInput.text)
+        if self.nameInput.text:
+            name = os.path.join(self.dataPath, self.nameInput.text + '.board')
+            if not os.path.isfile(name):
+                self.dismiss()
+                self.main.newLayoutDone(name)
+            else:
+                showErrorMsg('layout already exists, please provide another name')
+
 
 
 class CredentialsDialog(Popup):

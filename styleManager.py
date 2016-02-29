@@ -10,15 +10,6 @@ import json
 import re
 from kivy.properties import dpi2px
 
-#toggleButton_normal = "images\up_button.png"
-#toggleButton_down = "images\down_button.png"
-#toggleButton_size = (41, 60)
-
-#gauge_gauge = "images/controls/gauge/cadran.png"
-#gauge_needle = "images/controls/gauge/needle.png"
-
-#hor_slider_size = (100, 40)
-#ver_slider_size = (40, 100)
 
 skinTypes = {}                  # dictionary of all skin types. value is dictionary of skin names + skin
 
@@ -46,12 +37,17 @@ def getAvailableSkins(type):
 def getSkin(type, asset):
     """get the skin for the specified control type and state.
     The asset can overwrite default values"""
-    skins = skinTypes[type]
-    if skins:
-        if asset and asset.skin and "name" in asset.skin:
-            return skins[asset.skin["name"]]
-        else:
-            return skins["default"]
+    if type in skinTypes:
+        skins = skinTypes[type]
+        if skins:
+            if asset and asset.skin and "name" in asset.skin:
+                key = asset.skin["name"]
+                if key in skins:
+                    return skins[key]
+            if 'default' in skins:
+                return skins["default"]
+            if len(skins) > 0:            #the name is not known and no 'default' found, so return the first skin.
+                    return skins.itervalues().next()
 
 def metricToPixels(value):
     result = None

@@ -17,10 +17,11 @@
     iconInput: txtIcon
     titleInput: txtTitle
     size_hint: None, None
-    size: 340, 300
+    size: '340dp', '300dp'
     BoxLayout:
         orientation: 'vertical'
 		padding: '12dp'
+		spacing: '8dp'
 		#pos_hint: {'center': (0.5, 0.5)}
 		#size_hint_x: 0.66
 		#size_hint_y: None
@@ -32,11 +33,23 @@
             hint_text:'group title'
             size_hint: 1, None
             height: '32dp'
-        Button:
-            id: txtIcon
-            background_normal: root.icon
-            border:0,0,0,0
-            on_release: root.selectImage()
+        Widget:
+            RelativeLayout:
+                size: self.parent.size
+                pos: self.parent.pos
+                Label:
+                    text: 'Click image to select icon'
+                    text_size: self.parent.size
+                    halign: 'center'
+                    valign: 'bottom'
+                ImageButton:
+                    id: txtIcon
+                    size_hint: None, None
+                    allow_stretch: True
+                    pos_hint: {'center_x': .5, 'center_y': .5}
+                    source: root.icon
+                    border:0,0,0,0
+                    on_release: root.selectImage()
         Button:
             text: 'Done'
             size_hint: 1, None
@@ -74,9 +87,6 @@
     BoxLayout:
         orientation: 'vertical'
 		padding: '12dp'
-		#pos_hint: {'center': (0.5, 0.5)}
-		#size_hint_x: 0.66
-		#size_hint_y: None
         TextInput:
             id: txtTitle
             focus: True
@@ -90,12 +100,12 @@
 <AssetDialog>:
     labelInput: txtTitle
     selectedSkinExample: btnSelectedSkin
+    mainLayout: grdMain
     size_hint: 0.6, None
-    height: '440dp'
-    #ScrollView:
-    #    size_hint: 1, 1
+    height:  grdMain.minimum_height + dp(60) # '440dp'
+    pos_hint:{'center_x': .5, 'center_y': .5}
     GridLayout:
-        id: mainLayout
+        id: grdMain
         cols: 1
         spacing: '10dp'
         size_hint: 1, 1
@@ -119,9 +129,6 @@
                 pos: self.parent.pos
                 Label:
                     text: 'Click image to select skin'
-                    #pos: self.parent.pos
-                    #size_hint: None, None
-                    #size: self.texture_size
                     text_size: self.parent.size
                     halign: 'center'
                     valign: 'bottom'
@@ -178,35 +185,53 @@
     pwdInput: txtPwd
     serverInput: txtServer
     brokerInput: txtBroker
-    size_hint: .3, .4
     auto_dismiss: False
     title: 'Credentials'
-    BoxLayout:
-        orientation: 'vertical'
-		padding: '12dp'
+    size_hint: None, None
+    width: '300dp'
+    height:  grdMain.minimum_height + dp(60) # '440dp'
+    pos_hint:{'center_x': .5, 'center_y': .5}
+    GridLayout:
+        id: grdMain
+        cols: 1
+        spacing: '8dp'
+        size_hint: 1, 1
+		padding: '10dp'
         TextInput:
             id: txtUserName
             focus: True
             write_tab: False
             hint_text: 'User name'
+            size_hint_y: None
+            height:'32dp'
         TextInput:
             id: txtPwd
             write_tab: False
             hint_text: 'Password'
+            size_hint_y: None
+            height:'32dp'
         TextInput:
             id: txtServer
             write_tab: False
             hint_text: 'server address'
+            size_hint_y: None
+            height:'32dp'
         TextInput:
             id: txtBroker
             write_tab: False
             hint_text: 'broker address'
+            size_hint_y: None
+            height:'32dp'
         Button:
             text: 'Cancel'
             on_press: root.dismiss()
+            size_hint_y: None
+            height:'32dp'
         Button:
             text: 'Ok'
             on_press: root.dismissOk()
+            size_hint_y: None
+            height:'32dp'
 
 
 <TextInputDialog>:
@@ -301,7 +326,7 @@
 
 <SectionWidget>:
     assets: assets_layout
-    size_hint: (0.33, None)
+    size_hint: (self.sectionWidth, None)
     height: assets_layout.minimum_size[1] + section_lbl.texture_size[1] + 24
     canvas.before:
         Color:

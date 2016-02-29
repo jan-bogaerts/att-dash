@@ -10,8 +10,7 @@ import kivy
 kivy.require('1.9.1')   # replace with your current kivy version !
 
 from kivy.app import App
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from kivy.core.window import Window
 import iconfonts
 from ConfigParser import *
 import os
@@ -28,20 +27,45 @@ class MainWindow(Widget):
     rootLayout = ObjectProperty(None)
     data = None
     selectedGroup = None
-    #mainMenu = DropDown()           # for some reason, we need this. If it is removed, the dropdown menu defined in kv no longer works and gives an error
 
     def __init__(self, **kwargs):
         self.fileName = None
         self.isEditing = False
         self.selectedItems = set([])
         self.editActionBar = None
+        self.sectionWidth = 0.33                                    #default value, assigned to all new sections that get created.
+        self.window_resized(Window, Window.size[0], Window.size[1])
+        self.setupScreen()
         super(MainWindow, self).__init__(**kwargs)
+
+    def setupScreen(self):
+        """calculate the size of the screen"""
+        Window.bind(on_rotate=self.window_rotated)
+        Window.bind(on_resize=self.window_resized)
+
+    def window_rotated(self, rotation):
+        print "rotated"
+        self.window_resized(Window, Window.size[0], Window.size[1])
+
+    def window_resized(self, window, width, height):
+        width = width / Window.dpi
+        if width <= 4:
+            self.sectionWidth = 1
+        elif width <= 7:
+            self.sectionWidth = 0.5
+        else:
+            self.sectionWidth = 0.33
+        if self.selectedGroup:                                      # we can only add a new section if there is a group selected.
+            for section in self.workspace.children:
+                section.sectionWidth = self.sectionWidth
+
 
     def load(self, fileName):
         try:
             self.fileName = fileName
             self.data = layout.Layout()
-            self.data.load(fileName)
+            if os.path.isfile(fileName):                                    # could be that it's a new file (first startup) -> default layout gets a default filename
+                self.data.load(fileName)
             if self.data.userName and self.data.password and self.data.server and self.data.broker:
                 IOT.connect(self.data.userName, self.data.password, self.data.server, self.data.broker)
                 self.loadMenu()                                             #must be done after connecting, cause it might have to load assets
@@ -77,7 +101,6 @@ class MainWindow(Widget):
         """create a new group"""
         group = layout.Group(self.data)
         group.isSelected = False
-        group.title = "new group"
         dlg = GroupDialog(group, title='new group')
         dlg.data = group
         dlg.group_title = group.title
@@ -86,6 +109,8 @@ class MainWindow(Widget):
         dlg.open()
 
     def onNewGroupDone(self, group):
+        if not group.title:
+            group.title = "new group"
         menuItem = self.addGroup(group, 1)
         self.setSelectedGroup(menuItem)
         self.data.groups.append(group)
@@ -130,7 +155,7 @@ class MainWindow(Widget):
         dlg.open()
 
     def onNewSectionDone(self, section):
-        sectionW = SectionWidget(section)
+        sectionW = SectionWidget(section, sectionWidth = self.sectionWidth)
         self.workspace.add_widget(sectionW, 1)
 
         self.selectedGroup.data.sections.append(section)
@@ -206,10 +231,16 @@ class MainWindow(Widget):
             for section in self.selectedGroup.data.sections:
                 sectionW = SectionWidget(section)
                 self.workspace.add_widget(sectionW)
+                toRemove = []
                 for asset in section.assets:
-                    if asset.isLoaded == False:
-                        asset.load()
-                    self.addAssetToSection(asset, sectionW)
+                    try:
+                        if asset.isLoaded == False:
+                            asset.load()
+                        self.addAssetToSection(asset, sectionW)
+                    except Exception as e:
+                        toRemove.append(asset)
+                        showError(e, ", removing asset from dashboard")
+                for item in toRemove: section.assets.remove(item)
             if self.isEditing:
                 self.editWorkSpace()
 
@@ -228,20 +259,21 @@ class MainWindow(Widget):
     def newLayout(self, popup):
         """create a new layout"""
         try:
-            self.reset()
-            self.data = layout.Layout()
-            filler = Widget()               # for filling the empty space at the end.
-            self.menu.add_widget(filler)
             if popup:
                 popup.dismiss()
 
             dlg = NewLayoutPopup(self, title="Name of new layout")
+            dlg.dataPath = Application.user_data_dir
             dlg.open(self)
         except Exception as e:
             showError(e)
 
     def newLayoutDone(self, name):
-        self.fileName = os.path.join(Application.user_data_dir, name + '.board')     # add the path and extension.
+        self.reset()
+        self.data = layout.Layout()
+        filler = Widget()               # for filling the empty space at the end.
+        self.menu.add_widget(filler)
+        self.fileName = name            # path and extension were already added by the dialog, so it can check for file existance.
         self.selectedItems.clear()
         self.selectedGroup = None           # no groups, so there can be none seleced.
         self.editLayout(None)
@@ -410,7 +442,7 @@ class attDashApp(App):
         if self._config.read(appConfigFileName) and self._config.has_option('general', 'layout'):
             fileName = self._config.get('general', 'layout')
         else:
-            fileName = "layout.json"
+            fileName = os.path.join(Application.user_data_dir, 'default.board')
         self._main.load(fileName)
         return self._main
 

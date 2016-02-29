@@ -6,14 +6,12 @@ __email__ = "jb@allthingstalk.com"
 __status__ = "Prototype"  # "Development", or "Production"
 
 from kivy.uix.widget import Widget
-from kivy.uix.dropdown import DropDown
-from kivy.uix.behaviors import ButtonBehavior, ToggleButtonBehavior
 from kivy.properties import NumericProperty, StringProperty, ObjectProperty
-from kivy.uix.actionbar import ActionBar, ActionButton
+from kivy.uix.actionbar import ActionBar
 from kivy.uix.togglebutton import ToggleButton
 from kivy.graphics.vertex_instructions import *
 from kivy.graphics.context_instructions import *
-from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.slider import Slider
 
 from genericwidgets import *
 
@@ -50,6 +48,7 @@ class AssetWidget(Widget):
 
 class SectionWidget(Widget):
     assets = ObjectProperty(None)
+    sectionWidth = NumericProperty(0.33)
     def __init__(self, data, **kwargs):
         self.data = data
         super(SectionWidget, self).__init__(**kwargs)
@@ -94,4 +93,3 @@ class GroupMenuItem(ButtonBehavior, Widget):
     def on_press(self):
         if self.data.isSelected == False:                   # only react if we are not selected, if we are, we don't need to switch focus.
             self.parent.parent.parent.parent.parent.parent.setSelectedGroup(self)
-

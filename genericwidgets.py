@@ -10,3 +10,4 @@ from kivy.uix.image import AsyncImage
 
 class ImageButton(ButtonBehavior, AsyncImage):
     pass
+
