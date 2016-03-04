@@ -100,74 +100,86 @@ class AssetDialog(Popup):
 
     def showAssetSelector(self):
         """renders the root grounds in the treeview."""
-        popup = Popup(title="select asset")
-        popup.size_hint = (0.8,0.8)
-        tv = TreeView(root_options=dict(text='Tree One'), hide_root=True, indent_level=4)
-        tv.size_hint = 1, None
-        tv.bind(minimum_height = tv.setter('height'))
-        tv.load_func = self.populateTreeNode
-        tv.bind(selected_node=self.on_assetChanged)
-        root = ScrollView(pos = (0, 0))
-        root.add_widget(tv)
-        popup.add_widget(root)
-        popup.open()
+        try:
+            popup = Popup(title="select asset")
+            popup.size_hint = (0.8,0.8)
+            tv = TreeView(root_options=dict(text='Tree One'), hide_root=True, indent_level=4)
+            tv.size_hint = 1, None
+            tv.bind(minimum_height = tv.setter('height'))
+            tv.load_func = self.populateTreeNode
+            tv.bind(selected_node=self.on_assetChanged)
+            root = ScrollView(pos = (0, 0))
+            root.add_widget(tv)
+            popup.add_widget(root)
+            popup.open()
+        except Exception as e:
+            showError(e)
 
     def populateTreeNode(self, treeview, node):
-        if not node:
-            grounds = iot.getGrounds(True)
-            for ground in grounds:
-                result = TreeViewLabel(text=ground['title'],is_open=False, is_leaf=False, no_selection=True)
-                result.ground_id=ground['id']
-                yield result
-        elif hasattr(node, 'ground_id'):
-            devices = iot.getDevices(node.ground_id)
-            for device in devices:
-                result = TreeViewLabel(is_open=False, is_leaf=False, no_selection=True)
-                result.device_id = device['id']
-                if device['title']:
-                    result.text=device['title']             # for old devices that didn't ahve a title yet.
-                else:
-                    result.text=device['name']
-                yield result
-        elif hasattr(node, 'device_id'):
-            assets = iot.getAssets(node.device_id)
-            for asset in assets:
-                result = TreeViewLabel(is_open=False, is_leaf=True)
-                result.asset_id = asset['id']
-                if asset['title']:
-                    result.text=asset['title']             # for old devices that didn't ahve a title yet.
-                else:
-                    result.text=asset['name']
-                yield result
-                if self.tempData.id == asset['id']:
-                    treeview.select_node(result)
+        try:
+            if not node:
+                grounds = iot.getGrounds(True)
+                for ground in grounds:
+                    result = TreeViewLabel(text=ground['title'],is_open=False, is_leaf=False, no_selection=True)
+                    result.ground_id=ground['id']
+                    yield result
+            elif hasattr(node, 'ground_id'):
+                devices = iot.getDevices(node.ground_id)
+                for device in devices:
+                    result = TreeViewLabel(is_open=False, is_leaf=False, no_selection=True)
+                    result.device_id = device['id']
+                    if device['title']:
+                        result.text=device['title']             # for old devices that didn't ahve a title yet.
+                    else:
+                        result.text=device['name']
+                    yield result
+            elif hasattr(node, 'device_id'):
+                assets = iot.getAssets(node.device_id)
+                for asset in assets:
+                    result = TreeViewLabel(is_open=False, is_leaf=True)
+                    result.asset_id = asset['id']
+                    if asset['title']:
+                        result.text=asset['title']             # for old devices that didn't ahve a title yet.
+                    else:
+                        result.text=asset['name']
+                    yield result
+                    if self.tempData.id == asset['id']:
+                        treeview.select_node(result)
+        except Exception as e:
+            showError(e)
+
+    def setLabel(self, value):
+        self.tempData.title = value
 
     def loadUIFromAsset(self, setDefaultSkin = False):
         """load all the ui elements for the asset currently loaded in tempdata
         if setDefaultSkin is true, then the 'default' skin will be loaded (or the first in the list)"""
-        assetData = self.tempData.load(False)
-        if assetData:                                                   # we display the exact name of the asset + device, not the title that we supplied.
-            device = iot.getDevice(assetData['deviceId'])
-            self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
-        self.assetLabel = self.tempData.title
-        if hasattr(self, 'selectedSkin') and self.selectedSkin:
-            if 'example' in self.selectedSkin:
-                imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
-                self.selectedSkinExample.source = imgPath
-                self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
-        elif setDefaultSkin:
-            skins = sm.getAvailableSkins(self.tempData.control.controlType)
-            if 'default' in skins:
-                self.setSkin(skins['default'])
-            elif len(skins) > 0:
-                self.setSkin(skins[0])
+        try:
+            assetData = self.tempData.load(False)
+            if assetData:                                                   # we display the exact name of the asset + device, not the title that we supplied.
+                device = iot.getDevice(assetData['deviceId'])
+                self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
+            self.assetLabel = self.tempData.title
+            if hasattr(self, 'selectedSkin') and self.selectedSkin:
+                if 'example' in self.selectedSkin:
+                    imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
+                    self.selectedSkinExample.source = imgPath
+                    self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
+            elif setDefaultSkin:
+                skins = sm.getAvailableSkins(self.tempData.control.controlType)
+                if 'default' in skins:
+                    self.setSkin(skins['default'])
+                elif len(skins) > 0:
+                    self.setSkin(skins[0])
 
-        if hasattr(self, 'selectedSkin') and self.selectedSkin:         #could have changed if setDefaultSkin was true
-            if self.tempData.control:
-                if self.skinPropertyControls:
-                    map(self.mainLayout.remove_widget, self.skinPropertyControls)
-                self.skinPropertyControls = self.tempData.control.getPropertyEditors(self.selectedSkin)
-                map(self.mainLayout.add_widget, self.skinPropertyControls)
+            if hasattr(self, 'selectedSkin') and self.selectedSkin:         #could have changed if setDefaultSkin was true
+                if self.tempData.control:
+                    if self.skinPropertyControls:
+                        map(self.mainLayout.remove_widget, self.skinPropertyControls)
+                    self.skinPropertyControls = self.tempData.control.getPropertyEditors(self.selectedSkin)
+                    map(self.mainLayout.add_widget, self.skinPropertyControls)
+        except Exception as e:
+            showError(e)
 
 
     def on_assetChanged(self, instance, id):
@@ -183,26 +195,32 @@ class AssetDialog(Popup):
 
     def showStylesDropDown(self, relativeTo):
         """show a drop down box with all the available style images"""
-        if self.tempData.control:
-            dropdown = DropDown(auto_width=False, width='140dp')
-            skins = sm.getAvailableSkins(self.tempData.control.controlType)
-            for skin in skins:
-                if 'example' in skin:
-                    imgpPath = os.path.join(skin['path'], skin['example'])
-                    btn = ImageButton(source=imgpPath,  size_hint_y=None, height=44)
-                else:
-                    btn = Button(text= skin['name'],  size_hint_y=None, height=44)
-                btn.skin = skin
-                #btn.bind(on_release=lambda btn: self.setSkin(btn.skin))
-                btn.bind(on_press=self.stylesDropDownClosed)
-                dropdown.add_widget(btn)
-            dropdown.open(relativeTo)
+        try:
+            if self.tempData.control:
+                dropdown = DropDown(auto_width=False, width='140dp')
+                skins = sm.getAvailableSkins(self.tempData.control.controlType)
+                for skin in skins:
+                    if 'example' in skin:
+                        imgpPath = os.path.join(skin['path'], skin['example'])
+                        btn = ImageButton(source=imgpPath,  size_hint_y=None, height=44)
+                    else:
+                        btn = Button(text= skin['name'],  size_hint_y=None, height=44)
+                    btn.skin = skin
+                    #btn.bind(on_release=lambda btn: self.setSkin(btn.skin))
+                    btn.bind(on_press=self.stylesDropDownClosed)
+                    dropdown.add_widget(btn)
+                dropdown.open(relativeTo)
+        except Exception as e:
+            showError(e)
 
 
     def stylesDropDownClosed(self, btn):
         """set the skin, close the dropdown"""
-        self.setSkin(btn.skin)
-        btn.parent.parent.select(None)  #this closes the popup
+        try:
+            self.setSkin(btn.skin)
+            btn.parent.parent.select(None)  #this closes the popup
+        except Exception as e:
+            showError(e)
 
     def setSkin(self, skin):
         """set the skin"""
@@ -226,17 +244,20 @@ class AssetDialog(Popup):
         self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
 
     def done(self):
-        if self.tempData.id:                        # only do something if there is an id, could be that user closed window after selecting 'add new'
-            self.data.id = self.tempData.id
-            self.data.skin = self.tempData.skin
-            self.data.title = self.tempData.title
-            self.data.isLoaded = False
-            self.data.load()                # reload the asset data so the control can be rerendered
+        try:
+            if self.tempData.id:                        # only do something if there is an id, could be that user closed window after selecting 'add new'
+                self.data.id = self.tempData.id
+                self.data.skin = self.tempData.skin
+                self.data.title = self.tempData.title
+                self.data.isLoaded = False
+                self.data.load()                # reload the asset data so the control can be rerendered
 
-            if self.callback:
-                self.callback(self.parentW, self.data)
+                if self.callback:
+                    self.callback(self.parentW, self.data)
 
-        self.dismiss()
+            self.dismiss()
+        except Exception as e:
+            showError(e)
 
 
 class NewLayoutPopup(Popup):

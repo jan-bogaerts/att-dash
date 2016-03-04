@@ -120,6 +120,7 @@
             height:'32dp'
             write_tab: False
             hint_text:'label (default value = ' + root.assetLabel + ')'
+            on_text: root.setLabel(args[1])
         Widget:
             size_hint_y: None
             height:'180dp'
@@ -279,8 +280,8 @@
     markup: True
     text: '%s'%(icon('fa-square-o'))
     size_hint: None, None
-    height: 24
-    width: 24
+    height: '24dp'
+    width: '24dp'
     background_normal: ''
     background_down: ''
     background_color: 0,0,0,0
@@ -288,6 +289,7 @@
 
 <GroupMenuItem>:
     size_hint: (None, 1)            # this makes certain that the menu items aren't spread out evenly accros the menu, but only use the required space
+    width: '120dp'
     BoxLayout:
         orientation: 'vertical'
         size: root.size
@@ -405,7 +407,7 @@
 
 
                 ScrollView:
-                    size_hint: None, None
+                    size_hint: None, 1
                     width: self.parent.width - dp(60)
                     GridLayout:
                         id: menu_layout

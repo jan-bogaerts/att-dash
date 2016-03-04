@@ -1,4 +1,4 @@
 {
-  "size": [110, 40],
+  "size": ["180dp", "25dp"],
   "orientation": "horizontal"
 }

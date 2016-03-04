@@ -12,6 +12,7 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.graphics.vertex_instructions import *
 from kivy.graphics.context_instructions import *
 from kivy.uix.slider import Slider
+import kivy.metrics
 
 from genericwidgets import *
 
@@ -22,16 +23,17 @@ class EditButton(ToggleButton):
     """button used to select a control for editing"""
 
     def __init__(self, **kwargs):
+        #todo: translate from dp
         self.offset = 20
         super(EditButton, self).__init__(**kwargs)
 
     def reposition(self, parent, value):
-        self.x = parent.x + parent.width - self.offset
-        self.y = parent.y + parent.height - self.offset
+        self.x = parent.x + parent.width -  kivy.metrics.dp(self.offset)
+        self.y = parent.y + parent.height - kivy.metrics.dp(self.offset)
 
     def repositionAdd(self, parent, value):
-        self.x = parent.x + self.offset
-        self.y = parent.y + parent.height - self.offset
+        self.x = parent.x + kivy.metrics.dp(self.offset)
+        self.y = parent.y + parent.height - kivy.metrics.dp(self.offset)
 
 #class MainDropDown(DropDown):
 #    """drop down for editing"""

@@ -11,7 +11,8 @@ import json
 import httplib                                 # for http comm
 import urllib                                   # for http params
 import time
-import types as types                          # to check on type info
+from socket import error as SocketError         # for http error handling
+import errno
 
 _mqttClient = None
 _mqttConnected = False
@@ -19,6 +20,7 @@ _httpClient = None
 _callbacks = {}
 _get_assets_callback = None
 
+_curHttpServer = None
 _access_token = None
 _refresh_token = None
 _expires_in = None
@@ -68,9 +70,10 @@ def connect(username, pwd, httpServer, mqttServer):
     _subscribe_mqtt(mqttServer)
 
 def reconnect(httpServer, mqttServer):
-    global _httpClient
+    global _httpClient, _curHttpServer
     _httpClient = httplib.HTTPConnection(httpServer)
-    _subscribe_mqtt(mqttServer)
+    _curHttpServer = httpServer             #so we can reconnect if needed
+    _subscribe_mqtt(mqttServer)             #subscrriptions will be made after the connection is established
 
 def disconnect(resumable = False):
     """close all connections to the cloud and reset the module
@@ -82,6 +85,8 @@ def disconnect(resumable = False):
         _access_token = None
         _refresh_token = None
         _expires_in = None
+        for asset, callback in _callbacks.iteritems():
+            _unsubscribe(asset)
         _callbacks = {}
         _brokerPwd = None
         _brokerUser = None
@@ -100,14 +105,20 @@ def subscribe(asset, callback):
     :type asset: string
     :param asset: the id of the assset to monitor
     """
+    _callbacks[asset] = callback
     if _mqttClient and _mqttConnected == True:
-        _callbacks[asset] = callback
         _subscribe(asset)
 
 def _subscribe(asset):
     topic = str("client/" + _clientId + "/in/asset/" + asset + "/state")        # asset is usually a unicode string, mqtt trips over this.
     logging.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
+    logging.info(str(result))
+
+def _unsubscribe(asset):
+    topic = str("client/" + _clientId + "/in/asset/" + asset + "/state")        # asset is usually a unicode string, mqtt trips over this.
+    logging.info("subscribing to: " + topic)
+    result = _mqttClient.unsubscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logging.info(str(result))
 
 def _subscribe_mqtt(broker):
@@ -140,7 +151,8 @@ def extractHttpCredentials(data):
         _clientId = None
 
 def connectHttp(username, pwd, httpServer):
-    global _httpClient
+    global _httpClient, _curHttpServer
+    _curHttpServer = httpServer
     _httpClient = httplib.HTTPConnection(httpServer)
     loginRes = login(username, pwd)
     extractHttpCredentials(loginRes)
@@ -171,6 +183,7 @@ def _processError(str):
     raise Exception(str)
 
 def refreshToken():
+    """no need for error handling, is called within doHTTPRequest, which does the error handling"""
     global _access_token, _refresh_token
     url = "/login"
     body = "grant_type=refresh_token&refresh_token=" + _refresh_token + "&client_id=dashboard"
@@ -225,22 +238,52 @@ def getAssets(device):
     if result:
         return result['assets']
 
+def _reconnectAfterSendData():
+    try:
+        global _httpClient
+        _httpClient.close()
+        _httpClient = httplib.HTTPConnection(_curHttpServer)  # recreate the connection when something went wrong. if we don't do this and an error occured, consecutive requests will also fail.
+    except:
+        logging.exception("reconnect failed after _sendData produced an error")
+
 def doHTTPRequest(url, content, method = "GET"):
-    if _expires_in < time.time():               #need to refesh the token first
-        refreshToken()
-    headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token}
-    print("HTTP " + method + ': ' + url)
-    print("HTTP HEADER: " + str(headers))
-    print("HTTP BODY: " + content)
-    _httpClient.request(method, url, content, headers)
-    response = _httpClient.getresponse()
-    logging.info(str((response.status, response.reason)))
-    jsonStr =  response.read()
-    logging.info(jsonStr)
-    if response.status == 200 and jsonStr:
-        return json.loads(jsonStr)
-    elif not response.status == 200:
-        _processError(jsonStr)
+    """send the data and check the result
+        Some multi threading applications can have issues with the server closing the connection, if this happens
+        we try again
+    """
+    success = False
+    badStatusLineCount = 0                              # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
+    while not success:
+        try:
+            if _expires_in < time.time():               #need to refesh the token first
+                refreshToken()
+            headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token}
+            print("HTTP " + method + ': ' + url)
+            print("HTTP HEADER: " + str(headers))
+            print("HTTP BODY: " + content)
+            _httpClient.request(method, url, content, headers)
+            response = _httpClient.getresponse()
+            logging.info(str((response.status, response.reason)))
+            jsonStr =  response.read()
+            logging.info(jsonStr)
+            if response.status == 200:
+                if jsonStr: return json.loads(jsonStr)
+                else: return                                                    # get out of the ethernal loop
+            elif not response.status == 200:
+                _processError(jsonStr)
+        except httplib.BadStatusLine:                   # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
+            badStatusLineCount =+ 1
+            if badStatusLineCount < 10:
+                _reconnectAfterSendData()
+            else:
+                raise
+        except (SocketError) as e:
+            _reconnectAfterSendData()
+            if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
+                raise
+        except:
+            _reconnectAfterSendData()
+            raise
 
 def send(id, value):
     typeOfVal = type(value)

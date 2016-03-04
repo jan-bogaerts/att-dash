@@ -20,6 +20,8 @@ from knob import Knob
 from gauge import Gauge
 import os
 
+from errors import *
+
 class BaseIO(EventDispatcher):
     def __init__(self, asset, type, **kwargs):
         self.asset = asset
@@ -351,6 +353,14 @@ class Asset:
             if subscribe:
                 IOT.subscribe(self.id, self._valueChanged)
         return data
+
+    def loadSecure(self, subscribe = True):
+        """load all the data for the asset. At this point, we also register with the broker
+        returns the asset object that was retrieved from the platform"""
+        try:
+            return self.load(subscribe)
+        except Exception as e:
+            showError(e)
 
     def getGenericActuatorControl(self, datatype, value):
         type = str(datatype['type'])

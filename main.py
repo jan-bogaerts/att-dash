@@ -9,11 +9,18 @@ __status__ = "Prototype"  # "Development", or "Production"
 import kivy
 kivy.require('1.9.1')   # replace with your current kivy version !
 
+import logging
+logging.getLogger().setLevel(logging.INFO)
+
 from kivy.app import App
 from kivy.core.window import Window
 import iconfonts
 from ConfigParser import *
-import os
+
+try:
+    from jnius import autoclass  # SDcard Android
+except:
+    logging.exception('failed to load andreoid specific libs')
 
 from dialogs import *
 import layout
@@ -21,11 +28,12 @@ import attiotuserclient as IOT
 from layoutwidgets import *
 from errors import *
 
+data = None
+
 class MainWindow(Widget):
     menu = ObjectProperty(None)
     workspace = ObjectProperty(None)
     rootLayout = ObjectProperty(None)
-    data = None
     selectedGroup = None
 
     def __init__(self, **kwargs):
@@ -35,6 +43,7 @@ class MainWindow(Widget):
         self.editActionBar = None
         self.sectionWidth = 0.33                                    #default value, assigned to all new sections that get created.
         self.window_resized(Window, Window.size[0], Window.size[1])
+        Window.softinput_mode = 'resize'                            # so the screen resizes when the keybaord is shown, otherwise it hides editing.
         self.setupScreen()
         super(MainWindow, self).__init__(**kwargs)
 
@@ -48,7 +57,8 @@ class MainWindow(Widget):
         self.window_resized(Window, Window.size[0], Window.size[1])
 
     def window_resized(self, window, width, height):
-        width = width / Window.dpi
+        #showErrorMsg("width: " + str(width) + ", dpi: " + str(kivy.metrics.metrics.dpi) + ", inch: " + str(width / kivy.metrics.metrics.dpi) + ", rounded: " + str(kivy.metrics.metrics.dpi_rounded) + ", density: " +str(kivy.metrics.metrics.density) )
+        width = width / kivy.metrics.metrics.dpi
         if width <= 4:
             self.sectionWidth = 1
         elif width <= 7:
@@ -61,13 +71,15 @@ class MainWindow(Widget):
 
 
     def load(self, fileName):
+        global data
         try:
             self.fileName = fileName
-            self.data = layout.Layout()
+            data = layout.Layout()
+            self.data = data                                                # small hack so that other modules can reach data without hassle.
             if os.path.isfile(fileName):                                    # could be that it's a new file (first startup) -> default layout gets a default filename
-                self.data.load(fileName)
-            if self.data.userName and self.data.password and self.data.server and self.data.broker:
-                IOT.connect(self.data.userName, self.data.password, self.data.server, self.data.broker)
+                data.load(fileName)
+            if data.userName and data.password and data.server and data.broker:
+                IOT.connect(data.userName, data.password, data.server, data.broker)
                 self.loadMenu()                                             #must be done after connecting, cause it might have to load assets
             else:
                 self.loadMenu()                                             #must be done before editLayout (for new layouts)
@@ -77,14 +89,14 @@ class MainWindow(Widget):
 
     def loadMenu(self):
         self.menu.clear_widgets()           #clear any possible previous widgets
-        for group in self.data.groups:
+        for group in data.groups:
             self.addGroup(group)
         filler = Widget()               # for filling the empty space at the end.
         self.menu.add_widget(filler)
 
     def save(self):
-        if self.data:
-            self.data.save(self.fileName)
+        if data:
+            data.save(self.fileName)
 
     def addGroup(self, group, index = 0):
         """add a group to the menu.
@@ -99,7 +111,7 @@ class MainWindow(Widget):
 
     def newGroup(self, obj, value):
         """create a new group"""
-        group = layout.Group(self.data)
+        group = layout.Group(data)
         group.isSelected = False
         dlg = GroupDialog(group, title='new group')
         dlg.data = group
@@ -113,7 +125,7 @@ class MainWindow(Widget):
             group.title = "new group"
         menuItem = self.addGroup(group, 1)
         self.setSelectedGroup(menuItem)
-        self.data.groups.append(group)
+        data.groups.append(group)
         if self.isEditing:
             self.addEditTo(menuItem, 20)
 
@@ -128,19 +140,19 @@ class MainWindow(Widget):
     def showMainDropDown(self, attachTo):
         dropdown = DropDown(auto_width=False, width='140dp')
 
-        btn = Button(text='%s New' % iconfonts.icon('fa-file-o'), markup=True, size_hint_y=None, height=44)
+        btn = Button(text='%s New' % iconfonts.icon('fa-file-o'), markup=True, size_hint_y=None, height='44dp')
         btn.bind(on_release=lambda btn: self.newLayout(btn.parent.parent))
         dropdown.add_widget(btn)
 
-        btn = Button(text='%s Edit' % iconfonts.icon('fa-edit'), markup=True, size_hint_y=None, height=44)
+        btn = Button(text='%s Edit' % iconfonts.icon('fa-edit'), markup=True, size_hint_y=None, height='44dp')
         btn.bind(on_release=lambda btn: self.editLayout(btn.parent.parent))
         dropdown.add_widget(btn)
 
-        btn = Button(text='%s Credentials' % iconfonts.icon('fa-user'), markup=True, size_hint_y=None, height=44)
+        btn = Button(text='%s Credentials' % iconfonts.icon('fa-user'), markup=True, size_hint_y=None, height='44dp')
         btn.bind(on_release=lambda btn: self.editCredentials(btn.parent.parent))
         dropdown.add_widget(btn)
 
-        btn = Button(text='%s Open' % iconfonts.icon('fa-folder-open-o'), markup=True, size_hint_y=None, height=44)
+        btn = Button(text='%s Open' % iconfonts.icon('fa-folder-open-o'), markup=True, size_hint_y=None, height='44dp')
         btn.bind(on_release=lambda btn: self.openLayout(btn.parent.parent))
         dropdown.add_widget(btn)
 
@@ -230,6 +242,7 @@ class MainWindow(Widget):
         if self.selectedGroup:
             for section in self.selectedGroup.data.sections:
                 sectionW = SectionWidget(section)
+                sectionW.sectionWidth = self.sectionWidth
                 self.workspace.add_widget(sectionW)
                 toRemove = []
                 for asset in section.assets:
@@ -263,14 +276,14 @@ class MainWindow(Widget):
                 popup.dismiss()
 
             dlg = NewLayoutPopup(self, title="Name of new layout")
-            dlg.dataPath = Application.user_data_dir
+            dlg.dataPath = Application.get_dataPath()
             dlg.open(self)
         except Exception as e:
             showError(e)
 
     def newLayoutDone(self, name):
         self.reset()
-        self.data = layout.Layout()
+        data = layout.Layout()
         filler = Widget()               # for filling the empty space at the end.
         self.menu.add_widget(filler)
         self.fileName = name            # path and extension were already added by the dialog, so it can check for file existance.
@@ -284,8 +297,8 @@ class MainWindow(Widget):
         btn.halign = 'center'
         btn.valign = 'middle'
         btn.size_hint = (None, None)
-        btn.width = 200
-        btn.height = 100
+        btn.width = '200dp'
+        btn.height = '100dp'
         btn.text_size = btn.size
         btn.bind(on_press=self.setCredentialsNew)
         self.workspace.add_widget(btn)
@@ -309,7 +322,7 @@ class MainWindow(Widget):
         try:
             if not forNewLayout:                                    # if we were already connected, reconnect.
                 IOT.disconnect(False)
-            IOT.connect(self.data.userName, self.data.password, self.data.server, self.data.broker)     # connect with the new credentials
+            IOT.connect(data.userName, data.password, data.server, data.broker)     # connect with the new credentials
             if forNewLayout:                                        # if it was a new layout, there was a button on the workspace to set the credentials, this can be removed now.
                 self.workspace.clear_widgets()
         except Exception as e:
@@ -376,7 +389,7 @@ class MainWindow(Widget):
                         self.addEditTo(asset, 20)
                     self.addAddTo(section.assets, self.newAsset, section)
             self.addAddTo(self.workspace, self.newSection)
-        if not (self.data.userName and self.data.password and self.data.server and self.data.broker):
+        if not (data.userName and data.password and data.server and data.broker):
             self.addSetCredentialsBtnNew()
 
     def endEdit(self):
@@ -433,39 +446,67 @@ class MainWindow(Widget):
 
 appConfigFileName = 'app.config'
 
+
+
+server = None
+broker = None
+
 class attDashApp(App):
-    _main = None
-    _config = None
+
+    def __init__(self, **kwargs):
+        self._main = None
+        self._config = None
+        super(attDashApp, self).__init__(**kwargs)
+
     def build(self):
+        if not os.path.isdir(self.get_dataPath()):          # make certain taht the dir exists to save layout-boards.
+            os.makedirs(self.get_dataPath())
         self._main = MainWindow()
         self._config = ConfigParser()
         if self._config.read(appConfigFileName) and self._config.has_option('general', 'layout'):
             fileName = self._config.get('general', 'layout')
         else:
-            fileName = os.path.join(Application.user_data_dir, 'default.board')
+            fileName = os.path.join(Application.get_dataPath(), 'default.board')
         self._main.load(fileName)
         return self._main
 
+    def saveState(self, recoverable):
+        try:
+            self._main.save()                           # save the current state, so we can restore
+            if not self._config.has_section('general'):
+                self._config.add_section('general')
+            self._config.set('general', 'layout', self._main.fileName)
+            with open(appConfigFileName, 'w') as f:
+                self._config.write(f)
+            IOT.disconnect(recoverable)                        # close network connection, for cleanup
+        except:
+            logging.exception('failed to save application state')
+
     def on_pause(self):
-        self._main.save()                           # save the current state, in case that the application gets fully closed.
-        IOT.disconnect(True)                        # close network connection, we have to re-open it when the app becomes active, anyway. Also this saves resources on the system.
+        if self._main:                          # can get called multiple times, sometimes no memory objects are set
+            self.saveState(True)
         return True
 
     def on_resume(self):
         try:
-            IOT.reconnect(self._main.data.server, self._main.data.broker)
+            if data:                            # can get called multiple times, sometimes no memory objects are set
+                IOT.reconnect(data.server, data.broker)
+                logging.info("reconnected after resume")
         except Exception as e:
             showError(e)
 
     def on_stop(self):
-        self._main.save()                           # save the current state, so we can restore
-        if not self._config.has_section('general'):
-            self._config.add_section('general')
-        self._config.set('general', 'layout', self._main.fileName)
-        with open(appConfigFileName, 'w') as f:
-            self._config.write(f)
-        IOT.disconnect(False)                        # close network connection, for cleanup
+        self.saveState(False)
 
+
+    def get_dataPath(self):
+        try:
+            Environment = autoclass('android.os.Environment')
+            return os.path.join(Environment.get_running_app().getExternalStorageDirectory(), 'boards')
+
+        # Not on Android
+        except:
+            return os.path.join(self.user_data_dir, 'boards')
 
 iconfonts.register('default_font', 'iconfonts/fontawesome-webfont.ttf', 'iconfonts/font-awesome.fontd')
 
