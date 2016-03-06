@@ -35,8 +35,14 @@ def on_connect(client, userdata, rc):
         _mqttConnected = True
         logging.info("Connected to mqtt broker with result code "+str(rc))
         if _callbacks:
-            for asset, callback in _callbacks:
+            for asset, callback in _callbacks.iteritems():
                 _subscribe(asset)
+                curVal = getAssetState(asset)
+                if curVal:
+                    if 'state' in curVal:
+                        callback(curVal['state'])
+                    elif 'value' in curVal:
+                        callback(curVal)
     else:
         print("Failed to connect to mqtt broker: "  + mqtt.connack_string(rc))
 
@@ -203,6 +209,11 @@ def refreshToken():
 def getAsset(id):
     """get the details for the specified asset"""
     url = "/asset/" + id
+    return doHTTPRequest(url, "")
+
+def getAssetState(id):
+    """get the details for the specified asset"""
+    url = "/asset/" + id + '/state'
     return doHTTPRequest(url, "")
 
 def getGrounds(includeShared):

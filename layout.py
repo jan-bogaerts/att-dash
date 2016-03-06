@@ -418,7 +418,10 @@ class Asset:
     def _valueChanged(self, value):
         """called when the clour has reported a value change for this asset"""
         if self.control:
-            self.control.value = value['Value']
+            if 'value' in value:
+                self.control.value = value['value']
+            elif 'Value' in value:
+                self.control.value = value['Value']
 
     def delete(self):
         self.parent.assets.remove(self)

@@ -248,9 +248,10 @@ class AssetDialog(Popup):
             if self.tempData.id:                        # only do something if there is an id, could be that user closed window after selecting 'add new'
                 self.data.id = self.tempData.id
                 self.data.skin = self.tempData.skin
-                self.data.title = self.tempData.title
                 self.data.isLoaded = False
                 self.data.load()                # reload the asset data so the control can be rerendered
+                self.data.skin['title'] = self.tempData.title       # do after loading, otherwise we loose the value, this is for storage.
+                self.data.title = self.tempData.title               # this is for ui
 
                 if self.callback:
                     self.callback(self.parentW, self.data)
