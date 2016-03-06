@@ -48,8 +48,8 @@ class Gauge(Widget):
     unit = NumericProperty(1.8)
     value = BoundedNumericProperty(0, min=0, max=100, errorvalue=0)
     #mypath = os.path.dirname(os.path.abspath(inspect.getsourcefile(dummy)))
-    file_gauge = StringProperty("images/gauge/cadran.png") # mypath + os.sep +
-    file_needle = StringProperty("images/gauge/needle.png")
+    file_gauge = StringProperty("skins/gauge/default/cadran.png") # mypath + os.sep +
+    file_needle = StringProperty("skins/gauge/default/needle.png")
     size_gauge = BoundedNumericProperty(128, min=128, max=256, errorvalue=128)
     size_text = NumericProperty(10)
 

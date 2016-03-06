@@ -141,7 +141,7 @@ class knobInput(BaseIO):
         result = Knob()
         if self.value:
             result.value = self.value
-        skin = sm.getSkin('slider', self.asset)
+        skin = sm.getSkin('knob', self.asset)
         result.size = sm.getControlSize(skin, self.asset)
         result.knobimg_source = os.path.join(skin['path'], skin["knob"])
         result.marker_img = os.path.join(skin['path'], skin['marker'])

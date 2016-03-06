@@ -79,7 +79,7 @@ def getVar(skin, asset, name):
     return skin[name]
 
 def getMinimum(type, value, typeInfo):
-    if type in ["slider", "gauge"]:
+    if type in ["slider", "gauge", "knob"]:
         if 'minimum' in typeInfo:
             result = typeInfo['minimum']
         elif value > 0:
@@ -89,7 +89,7 @@ def getMinimum(type, value, typeInfo):
         return result
 
 def getMaximum(type, value, typeInfo):
-    if type in ["slider", "gauge"]:
+    if type in ["slider", "gauge", "knob"]:
         if 'maximum' in typeInfo:
             result = typeInfo['maximum']
         elif value > 0:
@@ -104,3 +104,10 @@ def getStep(type, typeInfo):
             return 0.1
         else:
             return 1                                    # we need to make certain that for integers, we use a step size of 1
+    if type == "knob":
+        if 'minimum' in typeInfo and 'maximum' in typeInfo:
+            return abs(typeInfo['maximum'] - typeInfo['minimum'] / 255)
+        elif typeInfo['type'] == "number":
+            return 0.1
+        else:
+            return 1

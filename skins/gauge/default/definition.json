@@ -1,5 +1,6 @@
 {
   "gauge":"cadran.png",
   "needle":"needle.png",
-  "example":"screenshot.png"
+  "example":"screenshot.png",
+  "size":[150, 100]
 }
