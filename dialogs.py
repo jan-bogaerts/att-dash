@@ -184,12 +184,13 @@ class AssetDialog(Popup):
 
     def on_assetChanged(self, instance, id):
         try:
-            if instance:
-                instance.parent.parent.parent.parent.dismiss()
-            if id:
-                self.tempData.id = id.asset_id
-                self.tempData.isLoaded = False
-                self.loadUIFromAsset(True)
+            if id.asset_id != self.tempData.id:         # if it's the same, then disalow, if we don't do this, the view closes automatically, the second time that the use opens the view and goes to the same asset (can't browse properly).
+                if instance:
+                    instance.parent.parent.parent.parent.dismiss()
+                if id:
+                    self.tempData.id = id.asset_id
+                    self.tempData.isLoaded = False
+                    self.loadUIFromAsset(True)
         except Exception as e:
             showError(e)
 

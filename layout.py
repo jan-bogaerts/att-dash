@@ -71,8 +71,11 @@ class SwitchInput(BaseIO):
         return result
 
     def state_changed(self, instance, value):
-        if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-            IOT.send(self.asset.id, value == "down")
+        try:
+            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                IOT.send(self.asset.id, value == "down")
+        except Exception as e:
+            showError(e)
 
 class sliderInput(BaseIO):
     value = NumericProperty()
@@ -111,11 +114,14 @@ class sliderInput(BaseIO):
         return result
 
     def value_changed(self, instance, value):
-        if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-            if self._typeInfo['type'] == 'number':
-                IOT.send(self.asset.id, value)
-            else:
-                IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+        try:
+            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                if self._typeInfo['type'] == 'number':
+                    IOT.send(self.asset.id, value)
+                else:
+                    IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+        except Exception as e:
+            showError(e)
 
 class knobInput(BaseIO):
     value = NumericProperty()
@@ -157,11 +163,14 @@ class knobInput(BaseIO):
         return result
 
     def value_changed(self, instance, value):
-        if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-            if self._typeInfo['type'] == 'number':
-                IOT.send(self.asset.id, value)
-            else:
-                IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+        try:
+            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                if self._typeInfo['type'] == 'number':
+                    IOT.send(self.asset.id, value)
+                else:
+                    IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+        except Exception as e:
+            showError(e)
 
     def getPropertyEditors(self, skin):
         """

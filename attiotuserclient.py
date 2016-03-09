@@ -115,6 +115,12 @@ def subscribe(asset, callback):
     if _mqttClient and _mqttConnected == True:
         _subscribe(asset)
 
+def unsubscribe(asset):
+    if asset in _callbacks:
+        _callbacks.pop(asset)
+        if _mqttClient and _mqttConnected == True:
+            _unsubscribe(asset)
+
 def _subscribe(asset):
     topic = str("client/" + _clientId + "/in/asset/" + asset + "/state")        # asset is usually a unicode string, mqtt trips over this.
     logging.info("subscribing to: " + topic)

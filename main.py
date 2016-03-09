@@ -66,6 +66,7 @@ class MainWindow(Widget):
 
     def load(self, fileName):
         global data
+        connectError = False
         try:
             dt.fileName = fileName
             dt.data = layout.Layout()
@@ -73,13 +74,19 @@ class MainWindow(Widget):
             if os.path.isfile(fileName):                                    # could be that it's a new file (first startup) -> default layout gets a default filename
                 dt.data.load(fileName)
             if dt.data.userName and dt.data.password and dt.data.server and dt.data.broker:
-                IOT.connect(dt.data.userName, dt.data.password, dt.data.server, dt.data.broker)
+                try:
+                    IOT.connect(dt.data.userName, dt.data.password, dt.data.server, dt.data.broker)
+                except Exception as e:
+                    connectError = True
+                    showError(e, ": Failed to connect network, please check your network settings.")
+                    raise                                                   # raise the exception again, we don't want the menu to load, cause it will fail
                 self.loadMenu()                                             #must be done after connecting, cause it might have to load assets
             else:
                 self.loadMenu()                                             #must be done before editLayout (for new layouts)
                 self.editLayout(None)                                   # there is no connection yet, automatically go to edit mode. Also helps with the button.
         except Exception as e:
-            showError(e)
+            if not connectError:
+                showError(e)
 
     def loadMenu(self):
         self.menu.clear_widgets()           #clear any possible previous widgets
@@ -207,11 +214,15 @@ class MainWindow(Widget):
 
     def addAssetToSection(self, asset, sectionW):
         assetW = AssetWidget(asset)
-        sectionW.assets.add_widget(assetW)
+        if self.isEditing:
+            sectionW.assets.add_widget(assetW, 1)
+        else:
+            sectionW.assets.add_widget(assetW)
         if asset.control:
             uiEl = asset.control.getUI()
         else:
             uiEl = InvalidControlWidget()
+
         assetW.control_container.add_widget(uiEl)
         return assetW
 
@@ -330,15 +341,15 @@ class MainWindow(Widget):
 
     def toggleEdit(self, instance, value):
         if value == 'down':
-            instance.text = '%s'%(iconfonts.icon('fa-check-square-o'))
+            instance.text = '[size=25]%s[/size]'%(iconfonts.icon('fa-check-square-o'))
             self.selectedItems.add(instance)
         else:
-            instance.text = '%s'%(iconfonts.icon('fa-square-o'))
+            instance.text = '[size=25]%s[/size]'%(iconfonts.icon('fa-square-o'))
             self.selectedItems.remove(instance)
 
     def addAddTo(self, addTo ,callback = None, section = None):
         add = EditButton()
-        add.text = '%s'%(iconfonts.icon('fa-plus'))
+        add.text = '[size=30]%s[/size]'%(iconfonts.icon('fa-plus'))
         addTo.add_widget(add)
         if section:
             add.section = section       #provide ref to section which will become the parent of the asset
@@ -361,7 +372,7 @@ class MainWindow(Widget):
                         edit.bind(state=self.toggleEdit)
                         group.bind(size=edit.reposition, pos=edit.reposition)
                     else:
-                        edit.text = '%s'%(iconfonts.icon('fa-plus'))
+                        edit.text = '[size=30]%s[/size]'%(iconfonts.icon('fa-plus'))
                         edit.x = group.x
                         edit.bind(state=self.newGroup)
                         group.bind(size=edit.repositionAdd, pos=edit.repositionAdd)
@@ -482,7 +493,7 @@ class attDashApp(App):
                 IOT.reconnect(dt.data.server, dt.data.broker)
                 logging.info("reconnected after resume")
         except Exception as e:
-            showError(e)
+            showError(e, ": Failed to reconnect network, please check your network settings.")
 
     def on_stop(self):
         self.saveState(False)
