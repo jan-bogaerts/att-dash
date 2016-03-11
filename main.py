@@ -267,7 +267,7 @@ class MainWindow(Widget):
     def reset(self):
         if self.isEditing:
             self.endEdit()
-        self.save()                     # first save the current layout, so we don't loose current data
+        dt.save()                     # first save the current layout, so we don't loose current data
         self._clearUI()
         IOT.disconnect(False)           # new layout, so close connection to previous
 
@@ -286,9 +286,10 @@ class MainWindow(Widget):
     def newLayoutDone(self, name):
         self.reset()
         dt.data = layout.Layout()
+        dt.data.title = self.title = os.path.splitext(os.path.basename(name))[0]
         filler = Widget()               # for filling the empty space at the end.
         self.menu.add_widget(filler)
-        self.fileName = name            # path and extension were already added by the dialog, so it can check for file existance.
+        dt.fileName = name            # path and extension were already added by the dialog, so it can check for file existance.
         self.selectedItems.clear()
         self.selectedGroup = None           # no groups, so there can be none seleced.
         self.editLayout(None)
@@ -326,7 +327,7 @@ class MainWindow(Widget):
                 IOT.disconnect(False)
             IOT.connect(dt.data.userName, dt.data.password, dt.data.server, dt.data.broker)     # connect with the new credentials
             if forNewLayout:                                        # if it was a new layout, there was a button on the workspace to set the credentials, this can be removed now.
-                self.workspace.clear_widgets()
+                self.workspace.remove_widget(self.workspace.children[0])
         except Exception as e:
             showError(e)
 
@@ -364,6 +365,7 @@ class MainWindow(Widget):
             if not self.isEditing:                                              # don't edit again if already editing.
                 self.isEditing = True
                 self.editActionBar = EditActionBar()                            # add this before any selectionbox, otherewise they are located incorrectly
+                self.editActionBar.title = self.data.title
                 self.rootLayout.add_widget(self.editActionBar, len(self.rootLayout.children))
                 for group in self.menu.children:
                     edit = EditButton()

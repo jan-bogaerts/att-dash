@@ -73,10 +73,12 @@ def getControlSize(skin, asset):
 
 
 
-def getVar(skin, asset, name):
+def getVar(skin, asset, name, default = None):
     if asset and asset.skin and name in asset.skin:
         return asset.skin[name]
-    return skin[name]
+    if name in skin:
+        return skin[name]
+    return default
 
 def getMinimum(type, value, typeInfo):
     if type in ["slider", "gauge", "knob"]:

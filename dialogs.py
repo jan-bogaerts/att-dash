@@ -12,6 +12,7 @@ from kivy.uix.togglebutton import  ToggleButton
 from kivy.uix.button import Button
 from kivy.uix.treeview import TreeView, TreeViewNode, TreeViewLabel
 from kivy.uix.scrollview import ScrollView
+import kivy.metrics
 import os
 import sys
 import copy
@@ -160,24 +161,25 @@ class AssetDialog(Popup):
                 device = iot.getDevice(assetData['deviceId'])
                 self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
             self.assetLabel = self.tempData.title
-            if hasattr(self, 'selectedSkin') and self.selectedSkin:
-                if 'example' in self.selectedSkin:
-                    imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
-                    self.selectedSkinExample.source = imgPath
-                    self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
-            elif setDefaultSkin:
+            if setDefaultSkin:
                 skins = sm.getAvailableSkins(self.tempData.control.controlType)
                 if 'default' in skins:
                     self.setSkin(skins['default'])
                 elif len(skins) > 0:
                     self.setSkin(skins[0])
+            elif hasattr(self, 'selectedSkin') and self.selectedSkin:
+                if 'example' in self.selectedSkin:
+                    imgPath = os.path.join(self.selectedSkin['path'], self.selectedSkin['example'])
+                    self.selectedSkinExample.source = imgPath
+                    self.selectedSkinExample.size = sm.getControlSize(self.selectedSkin, self.tempData)
 
             if hasattr(self, 'selectedSkin') and self.selectedSkin:         #could have changed if setDefaultSkin was true
                 if self.tempData.control:
                     if self.skinPropertyControls:
                         map(self.mainLayout.remove_widget, self.skinPropertyControls)
                     self.skinPropertyControls = self.tempData.control.getPropertyEditors(self.selectedSkin)
-                    map(self.mainLayout.add_widget, self.skinPropertyControls)
+                    for widget in self.skinPropertyControls:
+                        self.mainLayout.add_widget(widget, 1)
         except Exception as e:
             showError(e)
 
@@ -189,7 +191,7 @@ class AssetDialog(Popup):
                     instance.parent.parent.parent.parent.dismiss()
                 if id:
                     self.tempData.id = id.asset_id
-                    self.tempData.isLoaded = False
+                    self.tempData.unload()
                     self.loadUIFromAsset(True)
         except Exception as e:
             showError(e)
@@ -248,8 +250,8 @@ class AssetDialog(Popup):
         try:
             if self.tempData.id:                        # only do something if there is an id, could be that user closed window after selecting 'add new'
                 self.data.id = self.tempData.id
+                self.data.unload()
                 self.data.skin = self.tempData.skin
-                self.data.isLoaded = False
                 self.data.load()                # reload the asset data so the control can be rerendered
                 self.data.skin['title'] = self.tempData.title       # do after loading, otherwise we loose the value, this is for storage.
                 self.data.title = self.tempData.title               # this is for ui

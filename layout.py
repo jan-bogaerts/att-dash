@@ -77,7 +77,64 @@ class SwitchInput(BaseIO):
         except Exception as e:
             showError(e)
 
-class sliderInput(BaseIO):
+class draggableInput(BaseIO):
+    """base class for inputs that work with drag moves, like the knob and slider.
+    Adds properties to show the label, markers and when the change events are triggered"""
+    def getPropertyEditors(self, skin):
+        """
+        get all the controls for editing the extra properties of this control.
+        The list of controls that is returned, our bound to this object (changes will be stored in the skin object)
+        :param skin: json object
+        :return: a list of kivy controls that can be used for editing the properties for the skin.
+        """
+        items = []
+        grd = GridLayout(cols=2)
+        grd.bind(minimum_height = grd.setter('height'))
+        grd.size_hint = (1, None)
+
+        chk = CheckBox(active=sm.getVar(skin,  self.asset, "show_label", False), height='28dp', size_hint=(1, None))
+        chk.bind(active=self.on_show_labelChanged)
+        lbl = Label(text='show label', height='28dp', size_hint=(1, None), halign='right')
+        lbl.bind(size = lbl.setter('text_size'))
+        grd.add_widget(lbl)
+        grd.add_widget(chk)
+
+        chk = CheckBox(active=sm.getVar(skin,  self.asset, "show_marker", False), height='28dp', size_hint=(1, None))
+        chk.bind(active=self.on_show_markerChanged)
+        lbl = Label(text='show marker', height='28dp', size_hint=(1, None), halign='right')
+        lbl.bind(size = lbl.setter('text_size'))
+        grd.add_widget(lbl)
+        grd.add_widget(chk)
+
+        chk = CheckBox(active=sm.getVar(skin,  self.asset, "send_on_release", False), height='28dp', size_hint=(1, None))
+        chk.bind(active=self.on_send_on_release_Changed)
+        lbl = Label(text='send on release', height='28dp', size_hint=(1, None), halign='right')
+        lbl.bind(size = lbl.setter('text_size'))
+        grd.add_widget(lbl)
+        grd.add_widget(chk)
+
+        items.append(grd)
+        return items
+
+    def on_show_labelChanged(self, checkbox, value):
+        if not self.asset.skin:
+            self.asset.skin = {'show_label': value}
+        else:
+            self.asset.skin['show_label'] = value
+
+    def on_send_on_release_Changed(self, checkbox, value):
+        if not self.asset.skin:
+            self.asset.skin = {'send_on_release': value}
+        else:
+            self.asset.skin['send_on_release'] = value
+
+    def on_show_markerChanged(self, checkbox, value):
+        if not self.asset.skin:
+            self.asset.skin = {'show_marker': value}
+        else:
+            self.asset.skin['show_marker'] = value
+
+class sliderInput(draggableInput):
     value = NumericProperty()
     def __init__(self, value, typeInfo, asset, **kwargs):
         self.value = value
@@ -123,7 +180,7 @@ class sliderInput(BaseIO):
         except Exception as e:
             showError(e)
 
-class knobInput(BaseIO):
+class knobInput(draggableInput):
     value = NumericProperty()
     def __init__(self, value, typeInfo, asset, **kwargs):
         self.value = value
@@ -172,40 +229,6 @@ class knobInput(BaseIO):
         except Exception as e:
             showError(e)
 
-    def getPropertyEditors(self, skin):
-        """
-        get all the controls for editing the extra properties of this control.
-        The list of controls that is returned, our bound to this object (changes will be stored in the skin object)
-        :param skin: json object
-        :return: a list of kivy controls that can be used for editing the properties for the skin.
-        """
-        items = []
-        grd = GridLayout(cols=2)
-
-        chk = CheckBox(active=sm.getVar(skin,  self.asset, "show_label"))
-        chk.bind(active=self.on_show_labelChanged)
-        grd.add_widget(chk)
-        grd.add_widget(Label(text='show label'))
-
-        chk = CheckBox(active=sm.getVar(skin,  self.asset, "show_marker"))
-        chk.bind(active=self.on_show_markerChanged)
-        grd.add_widget(chk)
-        grd.add_widget(Label(text='show marker'))
-
-        items.append(grd)
-        return items
-
-    def on_show_labelChanged(self, checkbox, value):
-        if not self.asset.skin:
-            self.asset.skin = {'show_label': value}
-        else:
-            self.asset.skin['show_label'] = value
-
-    def on_show_markerChanged(self, checkbox, value):
-        if not self.asset.skin:
-            self.asset.skin = {'show_marker': value}
-        else:
-            self.asset.skin['show_marker'] = value
 
 class LedOutput(BaseIO):
     value = BooleanProperty(False)
@@ -363,6 +386,12 @@ class Asset:
                 IOT.subscribe(self.id, self._valueChanged)
         return data
 
+    def unload(self):
+        self.isLoaded = False
+        self.control = None
+        self.skin = None
+        self.title = ''
+
     def loadSecure(self, subscribe = True):
         """load all the data for the asset. At this point, we also register with the broker
         returns the asset object that was retrieved from the platform"""
@@ -466,9 +495,11 @@ class Layout:
         self.password = ''
         self.server = ''
         self.broker = ''
+        self.title = ''
 
     def load(self, filename):
         """"load the config from file"""
+        self.title = os.path.splitext(os.path.basename(filename))[0]
         with open(filename) as data_file:
             data = json.load(data_file)
             if data["version"] == 1.0:

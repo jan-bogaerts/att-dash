@@ -17,7 +17,7 @@ import kivy.metrics
 from genericwidgets import *
 
 class EditActionBar(ActionBar):
-    pass
+    title = StringProperty("ATT dashboard")
 
 class EditButton(ToggleButton):
     """button used to select a control for editing"""

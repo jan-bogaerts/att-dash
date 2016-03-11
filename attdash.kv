@@ -260,7 +260,7 @@
             id: filechooser
             multiselect: False
             filters: ['*.board']
-            path: Application.user_data_dir
+            path: Application.get_dataPath()
 
         BoxLayout:
             size_hint_y: None
@@ -367,12 +367,11 @@
 
 
 <EditActionBar>:
-    id: mainActionBar
     size_hint: 1, None
     ActionView:
         use_separator: True
         ActionPrevious:
-            title: 'ATT board'
+            title: root.title
             with_previous: False
         ActionButton:
             markup: True

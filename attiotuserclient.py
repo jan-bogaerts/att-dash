@@ -27,6 +27,7 @@ _expires_in = None
 _clientId = None
 _brokerUser = None
 _brokerPwd = None
+_isLoggedIn = False                                     # keeps track if user is logged in or not, so we can show the correct errors.
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, rc):
@@ -44,18 +45,20 @@ def on_connect(client, userdata, rc):
                     elif 'value' in curVal:
                         callback(curVal)
     else:
-        print("Failed to connect to mqtt broker: "  + mqtt.connack_string(rc))
+        logging.error("Failed to connect to mqtt broker: " + mqtt.connack_string(rc))
 
 
 # The callback for when a PUBLISH message is received from the server.
 def on_MQTTmessage(client, userdata, msg):
     global _lastMessage
-    payload = str(msg.payload)
-    topicParts = msg.topic.split("/")
-    if topicParts[4] in _callbacks:
-        value = json.loads(msg.payload)
-        callback = _callbacks[topicParts[4]]
-        callback(value)										#we want the second last value in the array, the last one is 'command'
+    try:
+        topicParts = msg.topic.split("/")
+        if topicParts[4] in _callbacks:
+            value = json.loads(msg.payload)
+            callback = _callbacks[topicParts[4]]
+            callback(value)										#we want the second last value in the array, the last one is 'command'
+    except Exception as e:
+        logging.exception()
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
@@ -86,8 +89,9 @@ def disconnect(resumable = False):
     if resumable is True, then only the network connections get closed, but the connection data remains, so that
     you can restart connections using the reconnect features.
     """
-    global  _access_token, _refresh_token, _expires_in, _mqttClient, _httpClient, _mqttConnected, _callbacks, _brokerPwd, _brokerUser
+    global  _access_token, _refresh_token, _expires_in, _mqttClient, _httpClient, _mqttConnected, _callbacks, _brokerPwd, _brokerUser, _isLoggedIn
     if not resumable:
+        _isLoggedIn = False
         _access_token = None
         _refresh_token = None
         _expires_in = None
@@ -171,6 +175,7 @@ def connectHttp(username, pwd, httpServer):
     return loginRes
 
 def login(username, pwd):
+    global _isLoggedIn
     url = "/login"
     body = "grant_type=password&username=" + username + "&password=" + pwd + "&client_id=maker"
     print("HTTP POST: " + url)
@@ -181,6 +186,7 @@ def login(username, pwd):
     jsonStr =  response.read()
     logging.info(jsonStr)
     if response.status == 200:
+        _isLoggedIn = True
         return json.loads(jsonStr)
     else:
         _processError(jsonStr)
@@ -229,9 +235,7 @@ def getGrounds(includeShared):
     """
     url = "/me/grounds"
     if includeShared:
-        params = urllib.urlencode({'type': "shared"})
-    else:
-        params = None
+        url += '?' + urllib.urlencode({'type': "shared"})
     result = doHTTPRequest(url, "")
     if result:
         return result['items']
@@ -268,39 +272,42 @@ def doHTTPRequest(url, content, method = "GET"):
         Some multi threading applications can have issues with the server closing the connection, if this happens
         we try again
     """
-    success = False
-    badStatusLineCount = 0                              # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
-    while not success:
-        try:
-            if _expires_in < time.time():               #need to refesh the token first
-                refreshToken()
-            headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token}
-            print("HTTP " + method + ': ' + url)
-            print("HTTP HEADER: " + str(headers))
-            print("HTTP BODY: " + content)
-            _httpClient.request(method, url, content, headers)
-            response = _httpClient.getresponse()
-            logging.info(str((response.status, response.reason)))
-            jsonStr =  response.read()
-            logging.info(jsonStr)
-            if response.status == 200:
-                if jsonStr: return json.loads(jsonStr)
-                else: return                                                    # get out of the ethernal loop
-            elif not response.status == 200:
-                _processError(jsonStr)
-        except httplib.BadStatusLine:                   # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
-            badStatusLineCount =+ 1
-            if badStatusLineCount < 10:
+    if _isLoggedIn:
+        success = False
+        badStatusLineCount = 0                              # keep track of the amount of 'badStatusLine' exceptions we received. If too many raise to caller, otherwise retry.
+        while not success:
+            try:
+                if _expires_in < time.time():               #need to refesh the token first
+                    refreshToken()
+                headers = {"Content-type": "application/json", "Authorization": "Bearer " + _access_token}
+                print("HTTP " + method + ': ' + url)
+                print("HTTP HEADER: " + str(headers))
+                print("HTTP BODY: " + content)
+                _httpClient.request(method, url, content, headers)
+                response = _httpClient.getresponse()
+                logging.info(str((response.status, response.reason)))
+                jsonStr =  response.read()
+                logging.info(jsonStr)
+                if response.status == 200:
+                    if jsonStr: return json.loads(jsonStr)
+                    else: return                                                    # get out of the ethernal loop
+                elif not response.status == 200:
+                    _processError(jsonStr)
+            except httplib.BadStatusLine:                   # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
+                badStatusLineCount =+ 1
+                if badStatusLineCount < 10:
+                    _reconnectAfterSendData()
+                else:
+                    raise
+            except (SocketError) as e:
                 _reconnectAfterSendData()
-            else:
+                if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
+                    raise
+            except:
+                _reconnectAfterSendData()
                 raise
-        except (SocketError) as e:
-            _reconnectAfterSendData()
-            if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
-                raise
-        except:
-            _reconnectAfterSendData()
-            raise
+    else:
+        raise Exception("Not logged in: please check your credentials")
 
 def send(id, value):
     typeOfVal = type(value)
