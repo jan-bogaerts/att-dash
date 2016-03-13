@@ -117,7 +117,16 @@ class AssetDialog(Popup):
             showError(e)
 
     def ControlSelectorDropDownClosed(self, btn):
-        self.tempData
+        try:
+            self.tempData.unload()                                      # unload before setting the new values.
+            if self.tempData.skin:
+                self.tempData.skin["control"] = btn.text
+            else:
+                self.tempData.skin = {'control': btn.text}
+            self.loadUIFromAsset(True)
+            btn.parent.parent.dismiss()  #this closes the popup
+        except Exception as e:
+            showError(e)
 
     def showAssetSelector(self):
         """renders the root grounds in the treeview."""
@@ -181,8 +190,8 @@ class AssetDialog(Popup):
                 device = iot.getDevice(assetData['deviceId'])
                 self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
             self.assetLabel = self.tempData.title
+            self.selectedControl = self.tempData.control.controlType
             if setDefaultSkin:
-                self.selectedControl = self.tempData.control.controlType
                 skins = sm.getAvailableSkins(self.tempData.control.controlType)
                 if 'default' in skins:
                     self.setSkin(skins['default'])

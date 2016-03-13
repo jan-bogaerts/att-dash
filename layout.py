@@ -9,6 +9,7 @@ import json
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
 from kivy.uix.progressbar import ProgressBar
 from kivy.event import EventDispatcher
 from kivy.uix.checkbox import CheckBox
@@ -341,18 +342,18 @@ class MeterOutput(BaseIO):
         self.prepareUiElement()
         return result
 
-class TextInput(BaseIO):
+class TextboxInput(BaseIO):
     #if 'enum' in datatype:
     value = StringProperty()
     def __init__(self, value, typeInfo, asset, **kwargs):
-        self.value = value
+        self.value = str(value)                                                         # in case not a string type
         self._typeInfo = typeInfo
-        super(TextInput, self).__init__(asset, 'text', **kwargs)
+        super(TextboxInput, self).__init__(asset, 'text', **kwargs)
 
     def on_value(self, instance, value):
         self._updatingValue = True
         try:
-            self.uiEl.text = value
+            self.uiEl.text = str(value)
         finally:
             self._updatingValue = False
 
@@ -361,10 +362,13 @@ class TextInput(BaseIO):
         if 'enum' in self._typeInfo:
             result = Spinner()
             result.values = self._typeInfo['enum']
+        elif self._typeInfo['type'].lower() == 'boolean':
+            result = Spinner()
+            result.values = ['true', 'false']
         else:
             result = TextInput()
         if self.value:
-            result.text = self.value
+            result.text = self.value.lower()
         skin = sm.getSkin('text', self.asset)
         result.size = sm.getControlSize(skin, self.asset)
 
@@ -456,7 +460,7 @@ class Asset:
         elif type == 'number' or type == 'integer':
             self.control = sliderInput(value['value'], datatype, self)
             return
-        self.control = TextInput(str(value['value']), datatype, self)
+        self.control = TextboxInput(str(value['value']), datatype, self)
 
     def getGenericSensorControl(self, datatype, value):
         type = datatype['type']
@@ -490,9 +494,9 @@ class Asset:
         if controlName == 'led':
             return LedOutput(value['value'], self)
         if controlName == 'text':
-            return TextInput(value['value'], self)
+            return TextboxInput(value['value'],self.dataType,  self)
         if controlName == 'label':
-            return TextOutput(value['value'], self)
+            return TextOutput(value['value'], self.dataType, self)
         if controlName == 'slider':
             return sliderInput(value['value'], self)
         if controlName == 'knob':

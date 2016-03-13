@@ -29,36 +29,63 @@ _brokerUser = None
 _brokerPwd = None
 _isLoggedIn = False                                     # keeps track if user is logged in or not, so we can show the correct errors.
 
+class SubscriberData:
+    """
+    callback: function to call when data arrived.
+    direction: 'in' (from cloud to client) or 'out' (from device to cloud)
+    toMonitor: 'state': changes in the value of the asset, 'command' actuator commands, 'events': device/asset/... creaated, deleted,..
+    level: 'asset', 'device', 'gateway', 'ground' # 'all device-assets', 'all gateway-assets', 'all gateway-devices', 'all gateway-device-assets'
+    """
+    def __init__(self):
+        self.id = None
+        self.callback = None
+        self.direction = 'in'
+        self.toMonitor = 'state'
+        self.level = 'asset'
+
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, rc):
     global _mqttConnected
-    if rc == 0:
-        _mqttConnected = True
-        logging.info("Connected to mqtt broker with result code "+str(rc))
-        if _callbacks:
-            for asset, callback in _callbacks.iteritems():
-                _subscribe(asset)
-                curVal = getAssetState(asset)
-                if curVal:
-                    if 'state' in curVal:
-                        callback(curVal['state'])
-                    elif 'value' in curVal:
-                        callback(curVal)
-    else:
-        logging.error("Failed to connect to mqtt broker: " + mqtt.connack_string(rc))
+    try:
+        if rc == 0:
+            _mqttConnected = True
+            logging.info("Connected to mqtt broker with result code "+str(rc))
+            if _callbacks:
+                for topic, definitions in _callbacks.iteritems():
+                    _subscribe(topic)
+                    for definition in definitions:
+                        if definition.level == 'asset' and definition.direction == 'in' and definition.toMonitor == 'state':    # refresh the state of all assets being monitored when reconnecting. Other events can't be refreshed.
+                            curVal = getAssetState(definition.id)
+                            if curVal:
+                                if 'state' in curVal:
+                                    definition.callback(curVal['state'])
+                                elif 'value' in curVal:
+                                    definition.callback(curVal)
+        else:
+            logging.error("Failed to connect to mqtt broker: " + mqtt.connack_string(rc))
+    except Exception:
+        logging.exception("failed to connect")
 
 
 # The callback for when a PUBLISH message is received from the server.
 def on_MQTTmessage(client, userdata, msg):
     global _lastMessage
     try:
-        topicParts = msg.topic.split("/")
-        if topicParts[4] in _callbacks:
-            value = json.loads(msg.payload)
-            callback = _callbacks[topicParts[4]]
-            callback(value)										#we want the second last value in the array, the last one is 'command'
+        if msg.topic in _callbacks:
+            topicParts = msg.topic.split('/')
+            logging.info(str(topicParts))
+            if topicParts[2] == 'in':                   # data from cloud to client is always json, from device to cloud is not garanteed to be json.
+                value = json.loads(msg.payload)
+            else:
+                value = msg.payload
+            defs = _callbacks[msg.topic]
+            for definition in defs:
+                definition.callback(value)
     except Exception as e:
-        logging.exception()
+        if msg.payload:
+            logging.exception("failed to process incomming message" + str(msg.payload))
+        else:
+            logging.exception("failed to process incomming message")
 
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
@@ -95,8 +122,8 @@ def disconnect(resumable = False):
         _access_token = None
         _refresh_token = None
         _expires_in = None
-        for asset, callback in _callbacks.iteritems():
-            _unsubscribe(asset)
+        for topic, callback in _callbacks.iteritems():
+            _unsubscribe(topic)
         _callbacks = {}
         _brokerPwd = None
         _brokerUser = None
@@ -109,31 +136,103 @@ def disconnect(resumable = False):
     _httpClient = None
 
 def subscribe(asset, callback):
-    """monitor for changes for that asset
+    """monitor for changes for that asset. For more monitor features, use 'subscribeAdv'
     :type callback: function, format: callback(json_object)
     :param callback: a function that will be called when a value arrives for the specified asset.
     :type asset: string
     :param asset: the id of the assset to monitor
     """
-    _callbacks[asset] = callback
+    data = SubscriberData()
+    data.id = asset
+    data.callback = callback
+    topic = _getTopic(data)
+    if topic in _callbacks:
+        _callbacks[topic].append(data)
+    else:
+        _callbacks[topic] = [data]
     if _mqttClient and _mqttConnected == True:
-        _subscribe(asset)
+        _subscribe(topic)
 
-def unsubscribe(asset):
-    if asset in _callbacks:
-        _callbacks.pop(asset)
-        if _mqttClient and _mqttConnected == True:
-            _unsubscribe(asset)
+def subscribeAdv(subscriberData):
+    """subscribe to topics with advanced parameter options"""
+    topic = _getTopic(subscriberData)
+    if topic in _callbacks:
+        _callbacks[topic].append(subscriberData)
+    else:
+        _callbacks[topic] = [subscriberData]
+    if _mqttClient and _mqttConnected == True:
+        _subscribe(topic)
 
-def _subscribe(asset):
-    topic = str("client/" + _clientId + "/in/asset/" + asset + "/state")        # asset is usually a unicode string, mqtt trips over this.
+def unsubscribe(id, level = 'asset'):
+    """
+    remove all the callbacks for the specified id.
+    :param level: which type of item: asset, device, gateway
+    :param id: the id of the item (asset, device, gateway,..) to remove
+    """
+    desc = SubscriberData()
+    desc.id = id
+    desc.level = level
+    for direction in ['in', 'out']:
+        desc.direction = direction
+        for toMonitor in ['state', 'event', 'command']:
+            desc.toMonitor = toMonitor
+            topic = _getTopic(desc)
+            if topic in _callbacks:
+                _callbacks.pop(topic)
+                if _mqttClient and _mqttConnected == True:
+                    _unsubscribe(topic)
+
+
+def getOutPath(assetId):
+    """converts the asset id to a path of gateway id /device name / asset name or device id / asset name"""
+    result = {}
+    asset = getAsset(assetId)
+    result['asset'] = asset['name']
+    device = getDevice(asset['deviceId'])
+    if device:
+        if 'gatewayId' in device and device['gatewayId']:
+            result['device'] = device['name']
+            result['gateway'] = device['gatewayId']
+        else:
+            result['device'] = device['id']
+    else:
+        gateway = getGateway(asset['deviceId'])
+        if gateway:
+            result['gateway'] = gateway['id']
+        else:
+            raise Exception("asset does not belong to a device or gateway")
+    return result
+
+def _getTopic(desc):
+    """
+    generate topic
+    :param desc: description of the topic to make
+    """
+    if desc.level == 'asset':
+        if isinstance(desc.id, dict):
+            if 'gateway' in desc.id:
+                if 'device' in desc.id:
+                    return str("client/" + _clientId + "/" + desc.direction + "/gateway/" + desc.id['gateway'] + "/device/" + desc.id['device'] + "/asset/" + desc.id['asset'] + "/" + desc.toMonitor)
+                else:
+                    return str("client/" + _clientId + "/" + desc.direction + "/gateway/" + desc.id['gateway'] + "/asset/" + desc.id['asset'] + "/" + desc.toMonitor)
+            else:
+                return str("client/" + _clientId + "/" + desc.direction + "/device/" + desc.id['device'] + "/asset/" + desc.id['asset'] + "/" + desc.toMonitor)
+        else:
+            return str("client/" + _clientId + "/" + desc.direction + "/asset/" + desc.id + "/" + desc.toMonitor)        # asset is usually a unicode string, mqtt trips over this.
+    #todo: add topic renderers for different type of topics.
+    raise NotImplementedError()
+
+def _subscribe(topic):
+    """
+        internal subscribe routine
+    :param desc: description of the subscription to make
+    """
     logging.info("subscribing to: " + topic)
     result = _mqttClient.subscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logging.info(str(result))
 
-def _unsubscribe(asset):
-    topic = str("client/" + _clientId + "/in/asset/" + asset + "/state")        # asset is usually a unicode string, mqtt trips over this.
-    logging.info("subscribing to: " + topic)
+def _unsubscribe(topic):
+    logging.info("unsubscribing to: " + topic)
     result = _mqttClient.unsubscribe(topic)                                                    #Subscribing in on_connect() means that if we lose the connection and reconnect then subscriptions will be renewed.
     logging.info(str(result))
 
@@ -226,6 +325,11 @@ def getAsset(id):
 def getAssetState(id):
     """get the details for the specified asset"""
     url = "/asset/" + id + '/state'
+    return doHTTPRequest(url, "")
+
+def getGateway(id):
+    """get the details for the specified gateway"""
+    url = "/gateway/" + id
     return doHTTPRequest(url, "")
 
 def getGrounds(includeShared):
