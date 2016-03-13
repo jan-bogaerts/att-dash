@@ -9,7 +9,7 @@ import json
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
-from kivy.uix.slider import Slider
+from kivy.uix.progressbar import ProgressBar
 from kivy.event import EventDispatcher
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.gridlayout import GridLayout
@@ -21,6 +21,7 @@ from gauge import Gauge
 import os
 
 from errors import *
+from genericwidgets import SliderExt
 
 class BaseIO(EventDispatcher):
     def __init__(self, asset, type, **kwargs):
@@ -155,7 +156,7 @@ class sliderInput(draggableInput):
 
     def getUI(self):
         """get the ui element"""
-        result = Slider()
+        result = SliderExt()
         if self.value:
             result.value = self.value
         skin = sm.getSkin('slider', self.asset)
@@ -164,10 +165,15 @@ class sliderInput(draggableInput):
         result.min = sm.getMinimum('slider', self.value, self._typeInfo)
         result.max = sm.getMaximum('slider', self.value, self._typeInfo)
         result.step = sm.getStep('slider', self._typeInfo)
+        result.show_label = sm.getVar(skin,  self.asset, "show_label")
+        result.show_marker = sm.getVar(skin, self.asset, "show_marker")
 
         self.uiEl = result
         self.prepareUiElement()
-        result.bind(value=self.value_changed)
+        if sm.getVar(skin, self.asset, "send_on_release", False):
+            result.on_dragEnded = self.value_changed                    # set the callback for when drag ends (self made, so no binding)
+        else:
+            result.bind(value=self.value_changed)
         return result
 
     def value_changed(self, instance, value):
@@ -211,12 +217,15 @@ class knobInput(draggableInput):
         result.min = sm.getMinimum('knob', self.value, self._typeInfo)
         result.max = sm.getMaximum('knob', self.value, self._typeInfo)
         result.step = sm.getStep('knob', self._typeInfo)
-        result.show_label = sm.getVar(skin,  self.asset, "show_label")
-        result.show_marker = sm.getVar(skin, self.asset, "show_marker")
+        result.show_label = sm.getVar(skin,  self.asset, "show_label", False)
+        result.show_marker = sm.getVar(skin, self.asset, "show_marker", False)
 
         self.uiEl = result
         self.prepareUiElement()
-        result.bind(value=self.value_changed)
+        if sm.getVar(skin, self.asset, "send_on_release", False):
+            result.on_dragEnded = self.value_changed                    # set the callback for when drag ends (self made, so no binding)
+        else:
+            result.bind(value=self.value_changed)
         return result
 
     def value_changed(self, instance, value):
@@ -298,6 +307,40 @@ class GaugeOutput(BaseIO):
         self.prepareUiElement()
         return result
 
+class MeterOutput(BaseIO):
+    value = NumericProperty()
+    def __init__(self, value, typeInfo, asset, **kwargs):
+        self.value = value
+        self._typeInfo = typeInfo
+        super(MeterOutput, self).__init__(asset, 'meter', **kwargs)
+
+    def on_value(self, instance, value):
+        self._updatingValue = True
+        try:
+            if self.uiEl:
+                if self.max < value:
+                    self.max = value
+                if self.min > value:
+                    self.min = value
+                self.uiEl.value = (value / (self.max - self.min)) * 100 # need to convert into % cause the gauge can only process from 0 to 100
+        finally:
+            self._updatingValue = False
+
+    def getUI(self):
+        """get the ui element"""
+        result = ProgressBar()
+        skin = sm.getSkin('meter', self.asset)
+        result.size = sm.getControlSize(skin, self.asset)
+
+        result.min = sm.getMinimum('meter', self.value, self._typeInfo)
+        result.max = sm.getMaximum('meter', self.value, self._typeInfo)
+        if self.value:
+            result.value = self.value
+
+        self.uiEl = result
+        self.prepareUiElement()
+        return result
+
 class TextInput(BaseIO):
     #if 'enum' in datatype:
     value = StringProperty()
@@ -339,7 +382,7 @@ class TextOutput(BaseIO):
     def __init__(self, value, typeInfo, asset, **kwargs):
         self.value = value
         self._typeInfo = typeInfo
-        super(TextOutput, self).__init__(asset, 'gauge', **kwargs)
+        super(TextOutput, self).__init__(asset, 'label', **kwargs)
 
     def on_value(self, instance, value):
         self._updatingValue = True
@@ -380,7 +423,12 @@ class Asset:
                 self.title = self.skin['title']
             else:
                 self.title = data["title"]
-            self.control = self.getControl(data['is'], data['control'], data['profile'], data['state'])
+            self.assetType =  str(data['is'])                   # unicode shit
+            self.dataType = data['profile']
+            if self.skin and 'control' in self.skin:
+                self.control = self.getControl(self.skin['control'], data['state'])
+            else:
+                self.control = self.getControlFromCloud(data['control'], data['state'])
             self.isLoaded = True
             if subscribe:
                 IOT.subscribe(self.id, self._valueChanged)
@@ -420,41 +468,76 @@ class Asset:
             return
         self.control = TextOutput(str(value['value']), datatype, self)
 
-    def getControl(self, assetType, requested, datatype, value):
+    def getSupportedControls(self):
+        """list the controls supported by this asset and return them"""
+        type = str(self.dataType['type'])
+        if self.assetType == 'actuator':
+            if type == 'boolean':
+                return ['switch', 'led', 'text', 'label']
+            elif type == 'number' or type == 'integer':
+                return ['slider', 'knob', 'text', 'label']
+            return ['text', 'label']
+        elif self.assetType == 'sensor':
+            if type == 'boolean':
+                return ['led', 'label']
+            elif type == 'number' or type == 'integer':
+                return ['meter', 'gauge', 'text', 'label']
+        return ['text', 'label']
+
+    def getControl(self, controlName, value):
+        if controlName == 'switch':
+            return SwitchInput(value['value'], self)
+        if controlName == 'led':
+            return LedOutput(value['value'], self)
+        if controlName == 'text':
+            return TextInput(value['value'], self)
+        if controlName == 'label':
+            return TextOutput(value['value'], self)
+        if controlName == 'slider':
+            return sliderInput(value['value'], self)
+        if controlName == 'knob':
+            return knobInput(value['value'], self)
+        if controlName == 'meter':
+            return MeterOutput(value['value'], self)
+        if controlName == 'gauge':
+            return GaugeOutput(value['value'], self)
+        raise Exception("can't build widget because there was an unknown control in layout definition (" + controlName + ')')
+
+    def getControlFromCloud(self, requested, value):
         """build the name of the data object that should be used in the display"""
         if not self.control:
-            if assetType == 'actuator':
+            if self.assetType == 'actuator':
                 if not requested['name']:
-                    self.getGenericActuatorControl(datatype, value)
+                    self.getGenericActuatorControl(self.dataType, value)
                 elif requested['name'] in ['slider', 'line-progress']:
-                    if datatype['type'] in ['integer', 'number']:                   # can only handle numbers in a slider at the moment
-                        self.control = sliderInput(value['value'], datatype, self)
+                    if self.dataType['type'] in ['integer', 'number']:                   # can only handle numbers in a slider at the moment
+                        self.control = sliderInput(value['value'], self.dataType, self)
                         return self.control
                 elif requested['name'] == 'knob':
-                    if datatype['type'] in ['integer', 'number']:
-                        self.control = knobInput(value['value'], datatype, self)
+                    if self.dataType['type'] in ['integer', 'number']:
+                        self.control = knobInput(value['value'], self.dataType, self)
                         return self.control
                 elif requested['name'] == 'toggle':
                     if type == 'boolean':
                         self.control = SwitchInput(value['value'], self)
                         return self.control
-                self.getGenericActuatorControl(datatype, value)
-            elif assetType == 'sensor':
+                self.getGenericActuatorControl(self.dataType, value)
+            elif self.assetType == 'sensor':
                 if not requested['name']:
-                    self.getGenericSensorControl(datatype, value)
+                    self.getGenericSensorControl(self.dataType, value)
                 elif requested['name'] in ['slider', 'line-progress']:
-                    if datatype['type'] in ['integer', 'number']:
-                        self.control = GaugeOutput(value['value'], datatype, self)
+                    if self.dataType['type'] in ['integer', 'number']:
+                        self.control = GaugeOutput(value['value'], self.dataType, self)
                         return self.control
                 elif requested['name'] == 'onoff':
                     if type == 'boolean':
                         self.control = LedOutput(value['value'], self)
                         return self.control
-                self.getGenericSensorControl(datatype, value)
+                self.getGenericSensorControl(self.dataType, value)
         return self.control
 
     def _valueChanged(self, value):
-        """called when the clour has reported a value change for this asset"""
+        """called when the cloud has reported a value change for this asset"""
         if self.control:
             if 'value' in value:
                 self.control.value = value['value']

@@ -81,6 +81,7 @@ class AssetDialog(Popup):
     labelInput = ObjectProperty()
     assetLabel = StringProperty('')
     selectedSkinExample = ObjectProperty('')
+    selectedControl = StringProperty('Click to select control')
     currentSize = NumericProperty(1)
     mainLayout = ObjectProperty()               # provides a reference to the layout that contains the editing objects, used to add/remove the skin specific editors
 
@@ -98,6 +99,25 @@ class AssetDialog(Popup):
         super(AssetDialog, self).__init__(**kwargs)
         if self.data.id:
             self.loadUIFromAsset()
+
+    def showControlSelector(self, relativeTo):
+        """shows a dropdown with the list of controls that the user can select from"""
+        try:
+            if self.tempData.id:
+                dropdown = DropDown(auto_width=True)
+                ctrls = self.tempData.getSupportedControls()
+                for ctrl in ctrls:
+                    btn = Button(text= ctrl,  size_hint_y=None, height='44dp')
+                    btn.bind(on_press=self.ControlSelectorDropDownClosed)
+                    dropdown.add_widget(btn)
+                dropdown.open(relativeTo)
+            else:
+                showErrorMsg("Please select an asset first.")
+        except Exception as e:
+            showError(e)
+
+    def ControlSelectorDropDownClosed(self, btn):
+        self.tempData
 
     def showAssetSelector(self):
         """renders the root grounds in the treeview."""
@@ -162,6 +182,7 @@ class AssetDialog(Popup):
                 self.assetName = str(device['title'] or device['name'] or '') + ' - ' + str(assetData['title'] or '')
             self.assetLabel = self.tempData.title
             if setDefaultSkin:
+                self.selectedControl = self.tempData.control.controlType
                 skins = sm.getAvailableSkins(self.tempData.control.controlType)
                 if 'default' in skins:
                     self.setSkin(skins['default'])
@@ -205,9 +226,9 @@ class AssetDialog(Popup):
                 for skin in skins:
                     if 'example' in skin:
                         imgpPath = os.path.join(skin['path'], skin['example'])
-                        btn = ImageButton(source=imgpPath,  size_hint_y=None, height=44)
+                        btn = ImageButton(source=imgpPath,  size_hint_y=None, height='44dp')
                     else:
-                        btn = Button(text= skin['name'],  size_hint_y=None, height=44)
+                        btn = Button(text= skin['name'],  size_hint_y=None, height='44dp')
                     btn.skin = skin
                     #btn.bind(on_release=lambda btn: self.setSkin(btn.skin))
                     btn.bind(on_press=self.stylesDropDownClosed)

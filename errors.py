@@ -8,11 +8,15 @@ __status__ = "Prototype"  # "Development", or "Production"
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 
-def showError(e, toAppend = None):
-    if hasattr(e, 'strerror'):
-        error = e.strerror
+def showError(e, toAppend = None, toPrepend = None):
+    if toPrepend:
+        error = toPrepend
     else:
-        error = e.message
+        error = ''
+    if hasattr(e, 'strerror'):
+        error += e.strerror
+    else:
+        error += e.message
     if toAppend:
         error += toAppend
     lbl = Label(text=error, size=(300, 200),text_size = (300, 200), halign = 'center', valign = 'middle')

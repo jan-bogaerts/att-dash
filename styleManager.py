@@ -81,7 +81,7 @@ def getVar(skin, asset, name, default = None):
     return default
 
 def getMinimum(type, value, typeInfo):
-    if type in ["slider", "gauge", "knob"]:
+    if type in ["slider", "gauge", "knob", "meter"]:
         if 'minimum' in typeInfo:
             result = typeInfo['minimum']
         elif value > 0:
@@ -91,7 +91,7 @@ def getMinimum(type, value, typeInfo):
         return result
 
 def getMaximum(type, value, typeInfo):
-    if type in ["slider", "gauge", "knob"]:
+    if type in ["slider", "gauge", "knob", "meter"]:
         if 'maximum' in typeInfo:
             result = typeInfo['maximum']
         elif value > 0:

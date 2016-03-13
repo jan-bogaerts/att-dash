@@ -239,6 +239,7 @@ class Knob(Widget):
     _label = ObjectProperty(None)  # Internal label that show value.
 
     def __init__(self, *args, **kwargs):
+        self.on_dragEnded = None                            #callback for when value change trigger has to be proccessed after the drag has ended.
         super(Knob, self).__init__(*args, **kwargs)
         self.bind(show_label=self._show_label)
         self.bind(show_marker=self._show_marker)
@@ -271,6 +272,12 @@ class Knob(Widget):
     def on_touch_move(self, touch):
         if self.collide_point(*touch.pos):
             self.update_angle(touch, True)
+
+    def on_touch_up(self, touch):
+        result = super(Knob, self).on_touch_up(touch)
+        if result and self.on_dragEnded:
+            self.on_dragEnded(self, self.value)
+        return result
 
     def update_angle(self, touch, being_pressed=False):
         posx, posy = touch.pos

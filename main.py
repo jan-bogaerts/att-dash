@@ -78,7 +78,7 @@ class MainWindow(Widget):
                     IOT.connect(dt.data.userName, dt.data.password, dt.data.server, dt.data.broker)
                 except Exception as e:
                     connectError = True
-                    showError(e, ": Failed to connect network, please check your network settings.")
+                    showError(e, None,  "Failed to connect to the internet, please check your network settings. ")
                     raise                                                   # raise the exception again, we don't want the menu to load, cause it will fail
                 self.loadMenu()                                             #must be done after connecting, cause it might have to load assets
             else:
