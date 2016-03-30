@@ -185,7 +185,10 @@ class sliderInput(draggableInput):
                 else:
                     IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
         except Exception as e:
-            showError(e)
+            if e.message:
+                showError(e)
+            else:
+                showErrorMsg("There was a communication problem, please try again")
 
 class knobInput(draggableInput):
     value = NumericProperty()
@@ -237,7 +240,10 @@ class knobInput(draggableInput):
                 else:
                     IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
         except Exception as e:
-            showError(e)
+            if e.message:
+                showError(e)
+            else:
+                showErrorMsg("There was a communication problem, please try again")
 
 
 class LedOutput(BaseIO):
@@ -378,8 +384,14 @@ class TextboxInput(BaseIO):
         return result
 
     def value_changed(self, instance, value):
-        if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-            IOT.send(self.asset.id, value)
+        try:
+            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                IOT.send(self.asset.id, value)
+        except Exception as e:
+            if e.message:
+                showError(e)
+            else:
+                showErrorMsg("There was a communication problem, please try again")
 
 class TextOutput(BaseIO):
     value = StringProperty()

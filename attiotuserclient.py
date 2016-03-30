@@ -90,7 +90,7 @@ def on_MQTTmessage(client, userdata, msg):
 def on_MQTTSubscribed(client, userdata, mid, granted_qos):
     logging.info("Subscribed to topic, receiving data from the cloud: qos=" + str(granted_qos))
 
-def connect(username, pwd, httpServer, mqttServer):
+def connect(username, pwd, httpServer="api.smartliving.io", mqttServer="broker.smartliving.io"):
     '''start the mqtt client and make certain that it can receive data from the IOT platform
 	   mqttServer: (optional): the address of the mqtt server. Only supply this value if you want to a none standard server.
 	   port: (optional) the port number to communicate on with the mqtt server.

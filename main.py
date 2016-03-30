@@ -150,6 +150,10 @@ class MainWindow(Widget):
         btn.bind(on_release=lambda btn: self.editCredentials(btn.parent.parent))
         dropdown.add_widget(btn)
 
+        btn = Button(text='%s Capture scene' % iconfonts.icon('fa-camera'), markup=True, size_hint_y=None, height='44dp')
+        btn.bind(on_release=lambda btn: self.captureScene(btn.parent.parent))
+        dropdown.add_widget(btn)
+
         btn = Button(text='%s Open' % iconfonts.icon('fa-folder-open-o'), markup=True, size_hint_y=None, height='44dp')
         btn.bind(on_release=lambda btn: self.openLayout(btn.parent.parent))
         dropdown.add_widget(btn)
