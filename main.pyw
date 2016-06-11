@@ -34,6 +34,8 @@ from layoutwidgets import *
 from errors import *
 import data as dt
 
+#todo: remove this when profiling is done
+#import cProfile
 
 class MainWindow(Widget):
     menu = ObjectProperty(None)
@@ -232,6 +234,7 @@ class MainWindow(Widget):
 
     def setSelectedGroup(self, group):
         """switch selected group and render the content"""
+        logging.info("changing selected group")
         if self.selectedGroup:
             self.selectedGroup.toggleSelected()
         self.selectedGroup = group
@@ -256,9 +259,13 @@ class MainWindow(Widget):
                         if asset.isLoaded == False:
                             asset.load()
                         self.addAssetToSection(asset, sectionW)
-                    except Exception as e:
+                    except IOT.AssetNotFoundException as e:
                         toRemove.append(asset)
+                        logging.exception("failed to load asset")
                         showError(e, ", removing asset from dashboard")
+                    except IOT.Exception as exc:
+                        logging.exception("failed to load asset")
+                        showError(exc, ", asset not loaded")
                 for item in toRemove: section.assets.remove(item)
             if self.isEditing:
                 self.editWorkSpace()
@@ -474,6 +481,7 @@ class attDashApp(App):
             fileName = dt.config.get('general', 'layout')
         else:
             fileName = os.path.join(Application.get_dataPath(), 'default.board')
+        logging.info("load main for build")
         self._main.load(fileName)
         return self._main
 
@@ -501,8 +509,17 @@ class attDashApp(App):
         except Exception as e:
             showError(e, ": Failed to reconnect network, please check your network settings.")
 
+    # todo: remove this when profiling is done
+    #def on_start(self):
+        #self.profile = cProfile.Profile()
+        #self.profile.enable()
+
+
     def on_stop(self):
         self.saveState(False)
+        # todo: remove this when profiling is done
+        #self.profile.disable()
+        #self.profile.dump_stats(os.path.join(self.get_dataPath(), 'slowresume.profile'))
 
 
     def get_dataPath(self):
