@@ -9,6 +9,7 @@ import json
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
+from kivy.uix.slider import Slider
 from kivy.uix.textinput import TextInput
 from kivy.uix.progressbar import ProgressBar
 from kivy.event import EventDispatcher
@@ -157,7 +158,7 @@ class sliderInput(draggableInput):
 
     def getUI(self):
         """get the ui element"""
-        result = SliderExt()
+        result = Slider()  #SliderExt()
         if self.value:
             result.value = self.value
         skin = sm.getSkin('slider', self.asset)
@@ -178,17 +179,30 @@ class sliderInput(draggableInput):
         return result
 
     def value_changed(self, instance, value):
-        try:
-            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-                if self._typeInfo['type'] == 'number':
-                    IOT.send(self.asset.id, value)
+        retryCount = 0
+        isSent = False
+        while not isSent and retryCount < 5:                    # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+            try:
+                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                    min = sm.getMinimum('slider', self.value, self._typeInfo)   # snap to borders, so it's easy to set min and max values.
+                    max = sm.getMaximum('slider', self.value, self._typeInfo)
+                    if value < min + 5:
+                        value = min
+                    elif value > max - 5:
+                        value = max
+                    if self._typeInfo['type'] == 'number':
+                        IOT.send(self.asset.id, value)
+                    else:
+                        IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+                    isSent = True
+            except Exception as e:
+                if retryCount < 5:
+                    retryCount += 1
                 else:
-                    IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
-        except Exception as e:
-            if e.message:
-                showError(e)
-            else:
-                showErrorMsg("There was a communication problem, please try again")
+                    if e.message:
+                        showError(e)
+                    else:
+                        showErrorMsg("There was a communication problem, please try again")
 
 class knobInput(draggableInput):
     value = NumericProperty()
@@ -233,17 +247,24 @@ class knobInput(draggableInput):
         return result
 
     def value_changed(self, instance, value):
-        try:
-            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-                if self._typeInfo['type'] == 'number':
-                    IOT.send(self.asset.id, value)
+        retryCount = 0
+        isSent = False
+        while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+            try:
+                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                    if self._typeInfo['type'] == 'number':
+                        IOT.send(self.asset.id, value)
+                    else:
+                        IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
+                isSent = True
+            except Exception as e:
+                if retryCount < 5:
+                    retryCount += 1
                 else:
-                    IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
-        except Exception as e:
-            if e.message:
-                showError(e)
-            else:
-                showErrorMsg("There was a communication problem, please try again")
+                    if e.message:
+                        showError(e)
+                    else:
+                        showErrorMsg("There was a communication problem, please try again")
 
 
 class LedOutput(BaseIO):
@@ -384,14 +405,21 @@ class TextboxInput(BaseIO):
         return result
 
     def value_changed(self, instance, value):
-        try:
-            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-                IOT.send(self.asset.id, value)
-        except Exception as e:
-            if e.message:
-                showError(e)
-            else:
-                showErrorMsg("There was a communication problem, please try again")
+        retryCount = 0
+        isSent = False
+        while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+            try:
+                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+                    IOT.send(self.asset.id, value)
+                isSent = True
+            except Exception as e:
+                if retryCount < 5:
+                    retryCount += 1
+                else:
+                    if e.message:
+                        showError(e)
+                    else:
+                        showErrorMsg("There was a communication problem, please try again")
 
 class TextOutput(BaseIO):
     value = StringProperty()

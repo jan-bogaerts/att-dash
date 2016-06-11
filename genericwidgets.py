@@ -18,7 +18,7 @@ class SliderExt(Slider):
     show_marker = BooleanProperty(False)
     _label = ObjectProperty(None)  # Internal label that show value.
 
-    def __init__(self, value, typeInfo, asset, **kwargs):
+    def __init__(self,  **kwargs): # value, typeInfo, asset,
         self.on_dragEnded = None
         super(SliderExt, self).__init__(**kwargs)
         self.bind(show_label=self._show_label)
