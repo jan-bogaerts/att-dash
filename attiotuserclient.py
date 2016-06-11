@@ -29,6 +29,12 @@ _brokerUser = None
 _brokerPwd = None
 _isLoggedIn = False                                     # keeps track if user is logged in or not, so we can show the correct errors.
 
+class AssetNotFoundException(Exception):
+    def __init__(self, arg):
+        # Set some exception infomation
+        self.msg = arg
+
+
 class SubscriberData:
     """
     callback: function to call when data arrived.
@@ -294,10 +300,10 @@ def _processError(str):
     obj = json.loads(str)
     if obj:
         if 'error_description' in obj:
-            raise Exception(obj['error_description'])
+            raise AssetNotFoundException(obj['error_description'])
         elif 'message' in obj:
-            raise Exception(obj['message'])
-    raise Exception(str)
+            raise AssetNotFoundException(obj['message'])
+    raise AssetNotFoundException(str)
 
 def refreshToken():
     """no need for error handling, is called within doHTTPRequest, which does the error handling"""
@@ -400,14 +406,17 @@ def doHTTPRequest(url, content, method = "GET"):
             except httplib.BadStatusLine:                   # a bad status line is probably due to the connection being closed. If it persists, raise the exception.
                 badStatusLineCount =+ 1
                 if badStatusLineCount < 10:
+                    logging.info("reconnecting after badstatusLine")
                     _reconnectAfterSendData()
                 else:
                     raise
-            except (SocketError) as e:
+            except SocketError as e:
+                logging.info("reconnecting after socket error")
                 _reconnectAfterSendData()
                 if e.errno != errno.ECONNRESET:             # if it's error 104 (connection reset), then we try to resend it, cause we just reconnected
-                    raise
+                    raise e[0], e[1], e[2]
             except:
+                logging.info("reconnecting after generic exception")
                 _reconnectAfterSendData()
                 raise
     else:
