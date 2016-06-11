@@ -29,7 +29,7 @@ source.exclude_dirs = tests, bin
 #version.filename = %(source.dir)s/main.py
 
 # (str) Application versioning (method 2)
-version = 1.0.0
+version = 1.0.1
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
@@ -83,7 +83,7 @@ android.minapi = 13
 #android.p4a_dir =
 
 # (list) python-for-android whitelist
-#android.p4a_whitelist = _lsprof.so
+#android.p4a_whitelist = lib-dynload/_lsprof.so
 
 # (str) Android entry point, default is ok for Kivy-based app
 #android.entrypoint = org.renpy.android.PythonActivity
@@ -147,7 +147,7 @@ android.minapi = 13
 log_level = 1
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
-warn_on_root = 0
+warn_on_root = 1
 
 
 #    -----------------------------------------------------------------------------

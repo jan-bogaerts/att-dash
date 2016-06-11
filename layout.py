@@ -74,11 +74,21 @@ class SwitchInput(BaseIO):
         return result
 
     def state_changed(self, instance, value):
-        try:
-            if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
-                IOT.send(self.asset.id, value == "down")
-        except Exception as e:
-            showError(e)
+        if self._updatingValue == False:  # don't send to cloud if cloud just updated the ui element.
+            retryCount = 0
+            isSent = False
+            while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+                try:
+                    IOT.send(self.asset.id, value == "down")
+                    isSent = True
+                except Exception as e:
+                    if retryCount < 5:
+                        retryCount += 1
+                    else:
+                        if e.message:
+                            showError(e)
+                        else:
+                            showErrorMsg("There was a communication problem, please try again")
 
 class draggableInput(BaseIO):
     """base class for inputs that work with drag moves, like the knob and slider.
@@ -181,9 +191,9 @@ class sliderInput(draggableInput):
     def value_changed(self, instance, value):
         retryCount = 0
         isSent = False
-        while not isSent and retryCount < 5:                    # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
-            try:
-                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+        if self._updatingValue == False:  # don't send to cloud if cloud just updated the ui element.
+            while not isSent and retryCount < 5:                    # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+                try:
                     min = sm.getMinimum('slider', self.value, self._typeInfo)   # snap to borders, so it's easy to set min and max values.
                     max = sm.getMaximum('slider', self.value, self._typeInfo)
                     if value < min + 5:
@@ -195,14 +205,14 @@ class sliderInput(draggableInput):
                     else:
                         IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
                     isSent = True
-            except Exception as e:
-                if retryCount < 5:
-                    retryCount += 1
-                else:
-                    if e.message:
-                        showError(e)
+                except Exception as e:
+                    if retryCount < 5:
+                        retryCount += 1
                     else:
-                        showErrorMsg("There was a communication problem, please try again")
+                        if e.message:
+                            showError(e)
+                        else:
+                            showErrorMsg("There was a communication problem, please try again")
 
 class knobInput(draggableInput):
     value = NumericProperty()
@@ -249,22 +259,22 @@ class knobInput(draggableInput):
     def value_changed(self, instance, value):
         retryCount = 0
         isSent = False
-        while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
-            try:
-                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+        if self._updatingValue == False:  # don't send to cloud if cloud just updated the ui element.
+            while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+                try:
                     if self._typeInfo['type'] == 'number':
                         IOT.send(self.asset.id, value)
                     else:
                         IOT.send(self.asset.id, int(value))     # if the cloud expects ints, we can't send something like 1.0
-                isSent = True
-            except Exception as e:
-                if retryCount < 5:
-                    retryCount += 1
-                else:
-                    if e.message:
-                        showError(e)
+                    isSent = True
+                except Exception as e:
+                    if retryCount < 5:
+                        retryCount += 1
                     else:
-                        showErrorMsg("There was a communication problem, please try again")
+                        if e.message:
+                            showError(e)
+                        else:
+                            showErrorMsg("There was a communication problem, please try again")
 
 
 class LedOutput(BaseIO):
@@ -407,19 +417,19 @@ class TextboxInput(BaseIO):
     def value_changed(self, instance, value):
         retryCount = 0
         isSent = False
-        while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
-            try:
-                if self._updatingValue == False:                # don't send to cloud if cloud just updated the ui element.
+        if self._updatingValue == False:  # don't send to cloud if cloud just updated the ui element.
+            while not isSent and retryCount < 5:  # we retry a couply of times, could be that the user was really quick and the connection was not setup yet (on mobile after turning dev on when app was open)
+                try:
                     IOT.send(self.asset.id, value)
-                isSent = True
-            except Exception as e:
-                if retryCount < 5:
-                    retryCount += 1
-                else:
-                    if e.message:
-                        showError(e)
+                    isSent = True
+                except Exception as e:
+                    if retryCount < 5:
+                        retryCount += 1
                     else:
-                        showErrorMsg("There was a communication problem, please try again")
+                        if e.message:
+                            showError(e)
+                        else:
+                            showErrorMsg("There was a communication problem, please try again")
 
 class TextOutput(BaseIO):
     value = StringProperty()
