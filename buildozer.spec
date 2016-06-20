@@ -33,7 +33,7 @@ version = 1.0.1
 
 # (list) Application requirements
 # comma seperated e.g. requirements = sqlite3,kivy
-requirements = kivy,paho-mqtt
+requirements = kivy,paho-mqtt,openssl
 
 # (list) Garden requirements
 #garden_requirements =

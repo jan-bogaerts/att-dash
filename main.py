@@ -24,7 +24,7 @@ import os
 try:
     from jnius import autoclass  # SDcard Android
 except:
-    logging.exception('failed to load andreoid specific libs')
+    logging.exception('failed to load android specific libs')
 
 import dialogs
 import layout
@@ -48,7 +48,11 @@ class MainWindow(Widget):
         self.selectedItems = set([])
         self.editActionBar = None
         self.sectionWidth = 0.33                                    #default value, assigned to all new sections that get created.
-        Window.softinput_mode = 'below_target'                            # so the screen resizes when the keybaord is shown, otherwise it hides editing.
+        try:
+            if Window:
+                Window.softinput_mode = 'below_target'                            # so the screen resizes when the keybaord is shown, otherwise it hides editing.
+        except:
+            logging.exception('failed to set android specific configs')
         super(MainWindow, self).__init__(**kwargs)
 
 
