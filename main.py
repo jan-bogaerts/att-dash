@@ -16,6 +16,7 @@ from kivy.app import App
 from kivy.core.window import Window
 from kivy.uix.dropdown import DropDown
 from kivy.uix.button import Button
+from kivy.clock import Clock
 import kivy.metrics
 import iconfonts
 from ConfigParser import *
@@ -84,7 +85,7 @@ class MainWindow(Widget):
                     IOT.connect(dt.data.userName, dt.data.password, dt.data.server, dt.data.broker)
                 except Exception as e:
                     connectError = True
-                    showError(e, None,  "Failed to connect to the internet, please check your network settings. ")
+                    showError(e, None,  "Failed to connect, please check your account settings or network. ")
                     raise                                                   # raise the exception again, we don't want the menu to load, cause it will fail
                 self.loadMenu()                                             #must be done after connecting, cause it might have to load assets
             else:
@@ -470,6 +471,17 @@ appConfigFileName = 'app.config'
 server = 'none'
 broker = None
 
+def tryReconnect(clockData):
+    """callback function for the timer object that is triggered when an iot.reconnect failed when the app resumes."""
+    try:
+        if dt.data:  # can get called multiple times, sometimes no memory objects are set
+            IOT.reconnect(dt.data.server, dt.data.broker)
+            logging.info("reconnected after resume")
+            closeReconnectError()               # if the operation was succesul, don't need to show the error message anymore (if there was any)
+    except Exception as e:
+        Clock.schedule_once(tryReconnect, 1)
+        showReconnectError(str(e))
+
 class attDashApp(App):
 
     def __init__(self, **kwargs):
@@ -506,12 +518,7 @@ class attDashApp(App):
         return True
 
     def on_resume(self):
-        try:
-            if dt.data:                            # can get called multiple times, sometimes no memory objects are set
-                IOT.reconnect(dt.data.server, dt.data.broker)
-                logging.info("reconnected after resume")
-        except Exception as e:
-            showError(e, ": Failed to reconnect network, please check your network settings.")
+        tryReconnect(None)
 
     # todo: remove this when profiling is done
     #def on_start(self):
